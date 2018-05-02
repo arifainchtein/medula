@@ -34,7 +34,7 @@ import com.teleonome.framework.utils.Utils;
 
 public class Medula {
 	//public final static String BUILD_NUMBER="17";
-	private String buildNumber="27/04/2018 19:08";
+	private String buildNumber="02/05/2018 16:26";
 	Logger logger;
 	String teleonomeName="";
 	int currentPulseInMilliSeconds=0;
@@ -434,14 +434,23 @@ public class Medula {
 		String destFolderName="/home/pi/Teleonome/logs/" + System.currentTimeMillis() + "/";
 		File destFolder = new File(destFolderName);
 		destFolder.mkdirs();
-		File srcFile = new File(srcFolderName + "PaceMaker.txt");
-		File destFile =  new File(destFolderName + "PaceMaker.txt");
+		File srcFile = new File(srcFolderName + "TeleonomeHypothalamus.txt");
+		File destFile =  new File(destFolderName + "TeleonomeHypothalamus.txt");
 		try {
 			FileUtils.copyFile(srcFile, destFile);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		 srcFile = new File(srcFolderName + "PulseThread.txt");
+		 destFile =  new File(destFolderName + "PulseThread.txt");
+		try {
+			FileUtils.copyFile(srcFile, destFile);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 		 srcFile = new File(srcFolderName + "DenomeManager.txt");
 		 destFile =  new File(destFolderName + "DenomeManager.txt");
 		try {
