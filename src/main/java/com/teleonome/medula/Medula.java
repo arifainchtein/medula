@@ -34,7 +34,7 @@ import com.teleonome.framework.utils.Utils;
 
 public class Medula {
 	//public final static String BUILD_NUMBER="17";
-	private String buildNumber="02/05/2018 16:26";
+	private String buildNumber="09/05/2018 07:38";
 	Logger logger;
 	String teleonomeName="";
 	int currentPulseInMilliSeconds=0;
@@ -92,6 +92,10 @@ public class Medula {
 		denomeJSONObject = new JSONObject(denomeFileInString);
 		boolean late;
 		String heartLastPulseDate = denomeJSONObject.getString(TeleonomeConstants.PULSE_TIMESTAMP);
+		Calendar cal = Calendar.getInstance();//TimeZone.getTimeZone("GMT+10:00"));
+		Date faultDate = cal.getTime();
+		
+		
 		try {
 			late= isPulseLate( denomeJSONObject);
 			if(late ){
@@ -110,7 +114,7 @@ public class Medula {
 					//if it only returns one line then the process is not running
 					if(results.size()<2){
 						logger.info("heart is not running");
-						addPathologyDene(TeleonomeConstants.PATHOLOGY_HEART_DIED, "data=" + data);
+						addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HEART_DIED, "data=" + data);
 					}else{
 						logger.info("heart is  running but still late, killing it... data=" + data);
 						
@@ -118,14 +122,14 @@ public class Medula {
 						// add a pathology dene to the pulse
 						//
 						
-						addPathologyDene(TeleonomeConstants.PATHOLOGY_HEART_PULSE_LATE,data);
+						addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HEART_PULSE_LATE,data);
 						
 						Utils.executeCommand("sudo kill -9  " + heartPid);
 						Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/heart.mapdb*");
 					}
 					
 					
-					copyLogFiles();
+					copyLogFiles(faultDate);
 				
 					 results = Utils.executeCommand("/home/pi/Teleonome/StartHeartBG.sh");
 					 data = "restarted the heart command response="  +String.join(", ", results);
@@ -176,13 +180,13 @@ public class Medula {
 				// add a pathology dene to the pulse
 				//
 				logger.warn("adding pathology dene");
-				addPathologyDene(TeleonomeConstants.PATHOLOGY_HEART_CRASHED_HPROF,data1.toString());
+				addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HEART_CRASHED_HPROF,data1.toString());
 				//Utils.executeCommand("sudo kill -9  " + hypothalamusPid);
 				logger.warn("killing heart process");
 				Utils.executeCommand("sudo kill -9  " + heartPid);
 				logger.warn("delete mapdb files");
 				Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/heart.mapdb*");
-				copyLogFiles();
+				copyLogFiles(faultDate);
 				//ArrayList results = Utils.executeCommand("sudo reboot");
 				logger.warn("restarting heart process");
 				
@@ -227,7 +231,7 @@ public class Medula {
 				// and save
 				FileUtils.copyFile(new File(Utils.getLocalDirectory() + "Teleonome.previous_pulse"), new File(Utils.getLocalDirectory() + "Teleonome.denome"));
 
-				addPathologyDene(TeleonomeConstants.PATHOLOGY_CORRUPT_PULSE_FILE,"");
+				addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_CORRUPT_PULSE_FILE,"");
 			}
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -269,7 +273,7 @@ public class Medula {
 					String data = "Last Pulse at \r" + lastPulseDate + String.join(", ", results);
 					if(results.size()<2){
 						logger.info("pacemaker is not running");
-						addPathologyDene(TeleonomeConstants.PATHOLOGY_HYPOTHALAMUS_DIED,data);
+						addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HYPOTHALAMUS_DIED,data);
 					}else{
 						logger.info("pacemaker is  running but still late, killing it...");
 						Utils.executeCommand("sudo kill -9  " + hypothalamusPid);
@@ -278,10 +282,10 @@ public class Medula {
 						//
 						// add a pathology dene to the pulse
 						//
-						addPathologyDene(TeleonomeConstants.PATHOLOGY_PULSE_LATE,data);
+						addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_PULSE_LATE,data);
 					}
 					logger.info("Medula is rebooting from hypothalamus problem...");
-					copyLogFiles();
+					copyLogFiles(faultDate);
 					 Process p = Runtime.getRuntime().exec("sudo reboot");
 					 System.exit(0);
 					 data = "Reboot command response="  +String.join(", ", results);
@@ -315,8 +319,8 @@ public class Medula {
 				
 				if(now>(lastTomcatPingMillis*60*3)){
 					logger.info("tomcat ping late, now=" + now + " lastTomcatPingMillis=" + lastTomcatPingMillis);
-					addPathologyDene(TeleonomeConstants.PATHOLOGY_TOMCAT_PING_LATE,"Last Tomcat Ping at at " + simpleFormatter.format(new Timestamp(lastTomcatPingMillis)));
-					copyLogFiles();
+					addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_TOMCAT_PING_LATE,"Last Tomcat Ping at at " + simpleFormatter.format(new Timestamp(lastTomcatPingMillis)));
+					copyLogFiles(faultDate);
 					ArrayList results = Utils.executeCommand("sudo reboot");
 					String data = "Reboot command response="  +String.join(", ", results);
 					logger.warn("Medula is rebooting from tomcat problem, reboot data=" + data);
@@ -387,7 +391,7 @@ public class Medula {
 						}
 						
 						
-						copyLogFiles();
+						copyLogFiles(faultDate);
 						
 						ArrayList results;
 						try {
@@ -428,10 +432,10 @@ public class Medula {
 	}
 	
 	
-	private void copyLogFiles() {
+	private void copyLogFiles(Date faultDate) {
 		
 		String srcFolderName="/home/pi/Teleonome/logs/" ;
-		String destFolderName="/home/pi/Teleonome/logs/" + System.currentTimeMillis() + "/";
+		String destFolderName="/home/pi/Teleonome/logs/" + faultDate.getTime() + "/";
 		File destFolder = new File(destFolderName);
 		destFolder.mkdirs();
 		File srcFile = new File(srcFolderName + "TeleonomeHypothalamus.txt");
@@ -566,7 +570,7 @@ public class Medula {
 	}
 
 
-	public void addPathologyDene(String pathologyCause, String data) throws InvalidDenomeException, JSONException{
+	public void addPathologyDene(Date faultTime, String pathologyCause, String data) throws InvalidDenomeException, JSONException{
 
 		File selectedFile = new File(Utils.getLocalDirectory() + "Teleonome.denome");
 		String initialIdentityState="";
@@ -593,10 +597,9 @@ public class Medula {
 			String pathologyName = TeleonomeConstants.PATHOLOGY_MEDULA_FORCED_REBOOT;
 			String pathologyLocation = TeleonomeConstants.PATHOLOGY_LOCATION_MEDULA;
 			Vector extraDeneWords = new Vector();
-			Calendar cal = Calendar.getInstance();//TimeZone.getTimeZone("GMT+10:00"));
-			JSONObject pathologyDeneDeneWord = Utils.createDeneWordJSONObject(TeleonomeConstants.PATHOLOGY_EVENT_MILLISECONDS, "" + cal.getTime().getTime() ,null,"long",true);
+			JSONObject pathologyDeneDeneWord = Utils.createDeneWordJSONObject(TeleonomeConstants.PATHOLOGY_EVENT_MILLISECONDS, "" + faultTime.getTime() ,null,"long",true);
 			extraDeneWords.addElement(pathologyDeneDeneWord);
-			pathologyDeneDeneWord = Utils.createDeneWordJSONObject(TeleonomeConstants.PATHOLOGY_EVENT_TIMESTAMP, simpleFormatter.format(cal.getTime()) ,null,"long",true);
+			pathologyDeneDeneWord = Utils.createDeneWordJSONObject(TeleonomeConstants.PATHOLOGY_EVENT_TIMESTAMP, simpleFormatter.format(faultTime) ,null,"long",true);
 			extraDeneWords.addElement(pathologyDeneDeneWord);
 			
 			pathologyDeneDeneWord = Utils.createDeneWordJSONObject(TeleonomeConstants.PATHOLOGY_DETAILS_LABEL, data ,null,"String",true);
