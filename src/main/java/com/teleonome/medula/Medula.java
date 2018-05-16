@@ -34,7 +34,7 @@ import com.teleonome.framework.utils.Utils;
 
 public class Medula {
 	//public final static String BUILD_NUMBER="17";
-	private String buildNumber="09/05/2018 07:38";
+	private static String buildNumber="11/05/2018 10:23";
 	Logger logger;
 	String teleonomeName="";
 	int currentPulseInMilliSeconds=0;
@@ -436,56 +436,87 @@ public class Medula {
 		
 		String srcFolderName="/home/pi/Teleonome/logs/" ;
 		String destFolderName="/home/pi/Teleonome/logs/" + faultDate.getTime() + "/";
+		String destFolderWebRootName="/home/pi/Teleonome/tomcat/webapps/ROOT/logs/" + faultDate.getTime() + "/";
+		logger.debug("copying files of faultdate" + faultDate.getTime() );;
 		File destFolder = new File(destFolderName);
 		destFolder.mkdirs();
+		File destFolderWebRoot = new File(destFolderWebRootName);
+		destFolderWebRoot.mkdirs();
+		
 		File srcFile = new File(srcFolderName + "TeleonomeHypothalamus.txt");
 		File destFile =  new File(destFolderName + "TeleonomeHypothalamus.txt");
+		File destFileWeb =  new File(destFolderWebRootName + "TeleonomeHypothalamus.txt");
 		try {
 			FileUtils.copyFile(srcFile, destFile);
+			FileUtils.copyFile(srcFile, destFileWeb);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.warn(Utils.getStringException(e));
 		}
 		 srcFile = new File(srcFolderName + "PulseThread.txt");
 		 destFile =  new File(destFolderName + "PulseThread.txt");
+		  destFileWeb =  new File(destFolderWebRootName + "PulseThread.txt");
 		try {
 			FileUtils.copyFile(srcFile, destFile);
+			FileUtils.copyFile(srcFile, destFileWeb);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.warn(Utils.getStringException(e));
+			
 		}
 		
 		 srcFile = new File(srcFolderName + "DenomeManager.txt");
 		 destFile =  new File(destFolderName + "DenomeManager.txt");
+		  destFileWeb =  new File(destFolderWebRootName + "DenomeManager.txt");
 		try {
 			FileUtils.copyFile(srcFile, destFile);
+			FileUtils.copyFile(srcFile, destFileWeb);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.warn(Utils.getStringException(e));
+			
 		}
 		
 		 srcFile = new File(srcFolderName + "Medula.txt");
 		 destFile =  new File(destFolderName + "Medula.txt");
+		  destFileWeb =  new File(destFolderWebRootName + "Medula.txt");
 		try {
 			FileUtils.copyFile(srcFile, destFile);
+			FileUtils.copyFile(srcFile, destFileWeb);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.warn(Utils.getStringException(e));
 		}
 		
 		 srcFile = new File(srcFolderName + "MnemosyneManager.txt");
 		 destFile =  new File(destFolderName + "MnemosyneManager.txt");
+		  destFileWeb =  new File(destFolderWebRootName + "MnemosyneManager.txt");
 		try {
 			FileUtils.copyFile(srcFile, destFile);
+			FileUtils.copyFile(srcFile, destFileWeb);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.warn(Utils.getStringException(e));
+		}
+		
+		 srcFile = new File(srcFolderName + "ArduinoUno.txt");
+		 destFile =  new File(destFolderName + "ArduinoUno.txt");
+		  destFileWeb =  new File(destFolderWebRootName + "ArduinoUno.txt");
+		try {
+			FileUtils.copyFile(srcFile, destFile);
+			FileUtils.copyFile(srcFile, destFileWeb);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			logger.warn(Utils.getStringException(e));
 		}
 		
 		srcFile = new File(srcFolderName + "gc.log");
 		 destFile =  new File(destFolderName + "gc.log");
+		  destFileWeb =  new File(destFolderWebRootName + "gc.log");
+		 
 		try {
 			FileUtils.copyFile(srcFile, destFile);
+			FileUtils.copyFile(srcFile, destFileWeb);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -497,31 +528,40 @@ public class Medula {
 		
 		srcFile = new File(srcFolderName + "PublisherListener.txt");
 		 destFile =  new File(destFolderName + "PublisherListener.txt");
+		 destFileWeb =  new File(destFolderWebRootName + "PublisherListener.txt");
 		try {
 			FileUtils.copyFile(srcFile, destFile);
+			FileUtils.copyFile(srcFile, destFileWeb);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.warn(Utils.getStringException(e));
+			
 		}
 		
 		srcFile = new File(srcFolderName + "Heart.txt");
 		 destFile =  new File(destFolderName + "Heart.txt");
+		  destFileWeb =  new File(destFolderWebRootName + "Heart.txt");
 		try {
 			FileUtils.copyFile(srcFile, destFile);
+			FileUtils.copyFile(srcFile, destFileWeb);
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.warn(Utils.getStringException(e));
+			
 		}
 		
 		 srcFolderName="/home/pi/Teleonome/heart/" ;
 			
 			srcFile = new File(srcFolderName + "gc.log");
 			 destFile =  new File(destFolderName + "heartgc.log");
+			  destFileWeb =  new File(destFolderWebRootName + "gc.log");
 			try {
 				FileUtils.copyFile(srcFile, destFile);
+				FileUtils.copyFile(srcFile, destFileWeb);
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
-				e.printStackTrace();
+				logger.warn(Utils.getStringException(e));
+				
 			}
 			
 	}
@@ -824,84 +864,14 @@ public class Medula {
 	 */
 
 	public static void main(String[] args) {
-		//		// TODO Auto-generated method stub
-		//		if(args.length>0 && args[0].equals("ComeToLife")) {
-		//			//
-		//			// this is the initial so comeToLife
-		//			//
-		//			// first start the heart
-		//			// delete the heart info
-		//			File heartInfoFile = new File(Utils.getLocalDirectory() + "heart/HeartProcess.info");
-		//			FileUtils.deleteQuietly(heartInfoFile);
-		//			//
-		//			// start the heart
-		//			//
-		//			System.out.println("About to start the heart");
-		//			startHeart();
-		//			//
-		//			// wait until 
-		//			heartInfoFile=null;
-		//			while(heartInfoFile==null) {
-		//				try {
-		//					Thread.sleep(1000);
-		//				} catch (InterruptedException e) {
-		//					// TODO Auto-generated catch block
-		//					e.printStackTrace();
-		//				}
-		//				heartInfoFile = new File(Utils.getLocalDirectory() + "heart/HeartProcess.info");
-		//			}
-		//			System.out.println("About to start the hypothalamus");
-		//			//
-		//			// now start the Hypothalamus
-		//			//
-		//			File paceMakerProcessNumberFile = new File(Utils.getLocalDirectory() + "PaceMakerProcess.info");
-		//			FileUtils.deleteQuietly(paceMakerProcessNumberFile);
-		//			//
-		//			// start the heart
-		//			//
-		//			startHypothalamus();
-		//			//
-		//			// wait until 
-		//			paceMakerProcessNumberFile=null;
-		//			while(paceMakerProcessNumberFile==null) {
-		//				try {
-		//					Thread.sleep(1000);
-		//				} catch (InterruptedException e) {
-		//					// TODO Auto-generated catch block
-		//					e.printStackTrace();
-		//				}
-		//				paceMakerProcessNumberFile = new File(Utils.getLocalDirectory() + "PaceMakerProcess.info");
-		//			}
-		//
-		//			System.out.println("About to start the webserver");
-		//
-		//			//
-		//			// now start the webserver
-		//			//
-		//			File webServerProcessInfo = new File(Utils.getLocalDirectory() + "WebServerProcess.info");
-		//			FileUtils.deleteQuietly(paceMakerProcessNumberFile);
-		//			//
-		//			// start the webServer
-		//			//
-		//			startWebServer();
-		//			//
-		//			// wait until 
-		//			webServerProcessInfo=null;
-		//			while(webServerProcessInfo==null) {
-		//				try {
-		//					Thread.sleep(1000);
-		//				} catch (InterruptedException e) {
-		//					// TODO Auto-generated catch block
-		//					e.printStackTrace();
-		//				}
-		//				webServerProcessInfo = new File(Utils.getLocalDirectory() + "WebServerProcess.info");
-		//			}
-		//			System.out.println("Teleonome is alive");
-		//		}else {
-		//			new Medula();
-		//		}
+		if(args.length>0 && args[0].equals("-v")) {
+			System.out.println("Medula Build " + buildNumber);
+		}else {
+			new Medula().monitor();
+		}
+		
 
-		new Medula().monitor();
+		
 	}
 
 }
