@@ -69,6 +69,19 @@
   <build>
    <finalName>Medula</finalName>
     <plugins>
+       <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-jar-plugin</artifactId>
+        <configuration>
+         <outputDirectory>../../</outputDirectory>
+          <archive>
+            <manifestEntries>
+              <Premain-Class>com.teleonome.objectsizer.ObjectSizeFetcher</Premain-Class>
+            </manifestEntries>
+          </archive>
+        </configuration>
+      </plugin>
+   <plugin>
  <plugin>
             <groupId>org.codehaus.mojo</groupId>
             <artifactId>build-helper-maven-plugin</artifactId>
