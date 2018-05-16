@@ -70,17 +70,29 @@
    <finalName>Medula</finalName>
     <plugins>
        <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-jar-plugin</artifactId>
-        <configuration>
-         <outputDirectory>../../</outputDirectory>
-          <archive>
-            <manifestEntries>
-              <Premain-Class>com.teleonome.objectsizer.ObjectSizeFetcher</Premain-Class>
-            </manifestEntries>
-          </archive>
-        </configuration>
-      </plugin>
+      <artifactId>maven-assembly-plugin</artifactId>
+      <configuration>
+      <outputDirectory>../../</outputDirectory>
+        <archive>
+          <manifest>
+            <mainClass>com.teleonome.medula.Medula</mainClass>
+          </manifest>
+        </archive>
+        <descriptorRefs>
+          <descriptorRef>jar-with-dependencies</descriptorRef>
+        </descriptorRefs>
+        <appendAssemblyId>false</appendAssemblyId>
+      </configuration>
+      <executions>
+    <execution>
+      <id>make-assembly</id> <!-- this is used for inheritance merges -->
+      <phase>package</phase> <!-- bind to the packaging phase -->
+      <goals>
+        <goal>single</goal>
+      </goals>
+    </execution>
+  </executions>
+    </plugin>
  <plugin>
             <groupId>org.codehaus.mojo</groupId>
             <artifactId>build-helper-maven-plugin</artifactId>
@@ -109,29 +121,6 @@
     <target>1.8</target>
   </configuration>
 </plugin>
-<plugin>
-      <artifactId>maven-assembly-plugin</artifactId>
-      <configuration>
-        <archive>
-          <manifest>
-            <mainClass>com.teleonome.medula.Medula</mainClass>
-          </manifest>
-        </archive>
-        <descriptorRefs>
-          <descriptorRef>jar-with-dependencies</descriptorRef>
-        </descriptorRefs>
-        <appendAssemblyId>false</appendAssemblyId>
-      </configuration>
-      <executions>
-    <execution>
-      <id>make-assembly</id> <!-- this is used for inheritance merges -->
-      <phase>package</phase> <!-- bind to the packaging phase -->
-      <goals>
-        <goal>single</goal>
-      </goals>
-    </execution>
-  </executions>
-    </plugin>
         <plugin>
     <groupId>com.google.code.maven-replacer-plugin</groupId>
     <artifactId>replacer</artifactId>
