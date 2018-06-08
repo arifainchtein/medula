@@ -230,18 +230,28 @@ public class Medula {
 				//
 				// and save
 				FileUtils.copyFile(new File(Utils.getLocalDirectory() + "Teleonome.previous_pulse"), new File(Utils.getLocalDirectory() + "Teleonome.denome"));
-
+				denomeFileInString = FileUtils.readFileToString(new File(Utils.getLocalDirectory() + "Teleonome.denome"));
+				denomeJSONObject = new JSONObject(denomeFileInString);
+				
 				addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_CORRUPT_PULSE_FILE,"");
+			}else {
+				//
+				// now try to create a jsonobject, if you get an exception cop \y the backup
+				//
+				denomeJSONObject = new JSONObject(denomeFileInString);
+				
 			}
+			
+			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			logger.info(Utils.getStringException(e));
 		}catch (InvalidDenomeException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.warn(Utils.getStringException(e));
 		} catch (JSONException e) {
 			// TODO Auto-generated catch block
-			e.printStackTrace();
+			logger.warn(Utils.getStringException(e));
 		}
 
 		try {
@@ -253,7 +263,7 @@ public class Medula {
 		
 		
 		try{	
-			denomeJSONObject = new JSONObject(denomeFileInString);
+			
 			 late= isPulseLate( denomeJSONObject);
 			String lastPulseDate = denomeJSONObject.getString(TeleonomeConstants.PULSE_TIMESTAMP);
 			
