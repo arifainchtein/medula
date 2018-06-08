@@ -222,26 +222,33 @@ public class Medula {
 	
 		try {
 			denomeFileInString = FileUtils.readFileToString(new File(Utils.getLocalDirectory() + "Teleonome.denome"));
+			boolean validJSONFormat=true;
+			
+			
 			if(denomeFileInString.length()==0){
-
-				FileUtils.deleteQuietly(new File(Utils.getLocalDirectory() + "Teleonome.denome"));
-
-				denomeFileInString = FileUtils.readFileToString(new File(Utils.getLocalDirectory() + "Teleonome.previous_pulse"));
-				//
-				// and save
-				FileUtils.copyFile(new File(Utils.getLocalDirectory() + "Teleonome.previous_pulse"), new File(Utils.getLocalDirectory() + "Teleonome.denome"));
-				denomeFileInString = FileUtils.readFileToString(new File(Utils.getLocalDirectory() + "Teleonome.denome"));
-				denomeJSONObject = new JSONObject(denomeFileInString);
-				
-				addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_CORRUPT_PULSE_FILE,"");
+				validJSONFormat=false;
 			}else {
 				//
 				// now try to create a jsonobject, if you get an exception cop \y the backup
 				//
-				denomeJSONObject = new JSONObject(denomeFileInString);
-				
+				try{
+					denomeJSONObject = new JSONObject(denomeFileInString);
+				}catch (JSONException e) {
+					//
+					// if we are here is
+					logger.warn(Utils.getStringException(e));
+					validJSONFormat=false;
+				}
 			}
 			
+			if(!validJSONFormat) {
+				FileUtils.deleteQuietly(new File(Utils.getLocalDirectory() + "Teleonome.denome"));
+				FileUtils.copyFile(new File(Utils.getLocalDirectory() + "Teleonome.previous_pulse"), new File(Utils.getLocalDirectory() + "Teleonome.denome"));
+				addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_CORRUPT_PULSE_FILE,"");
+			}
+
+			denomeFileInString = FileUtils.readFileToString(new File(Utils.getLocalDirectory() + "Teleonome.denome"));
+			denomeJSONObject = new JSONObject(denomeFileInString);
 			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -249,10 +256,7 @@ public class Medula {
 		}catch (InvalidDenomeException e) {
 			// TODO Auto-generated catch block
 			logger.warn(Utils.getStringException(e));
-		} catch (JSONException e) {
-			// TODO Auto-generated catch block
-			logger.warn(Utils.getStringException(e));
-		}
+		} 
 
 		try {
 			hypothalamusPid = Integer.parseInt(FileUtils.readFileToString(new File("PaceMakerProcess.info")).split("@")[0]);
