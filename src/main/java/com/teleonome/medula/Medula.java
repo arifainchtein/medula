@@ -70,6 +70,47 @@ public class Medula {
 		logger.info("Starting Medula at " + new Date() + " buildNumber=" + buildNumber);
 		String denomeFileInString = null;
 		JSONObject denomeJSONObject;
+		Calendar cal = Calendar.getInstance();//TimeZone.getTimeZone("GMT+10:00"));
+		Date faultDate = cal.getTime();
+		
+		try {
+			denomeFileInString = FileUtils.readFileToString(new File(Utils.getLocalDirectory() + "Teleonome.denome"));
+			boolean validJSONFormat=true;
+			
+			
+			if(denomeFileInString.length()==0){
+				validJSONFormat=false;
+			}else {
+				//
+				// now try to create a jsonobject, if you get an exception cop \y the backup
+				//
+				try{
+					denomeJSONObject = new JSONObject(denomeFileInString);
+				}catch (JSONException e) {
+					//
+					// if we are here is
+					logger.warn(Utils.getStringException(e));
+					validJSONFormat=false;
+				}
+			}
+			
+			if(!validJSONFormat) {
+				FileUtils.deleteQuietly(new File(Utils.getLocalDirectory() + "Teleonome.denome"));
+				FileUtils.copyFile(new File(Utils.getLocalDirectory() + "Teleonome.previous_pulse"), new File(Utils.getLocalDirectory() + "Teleonome.denome"));
+				addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_CORRUPT_PULSE_FILE,"");
+			}
+
+			denomeFileInString = FileUtils.readFileToString(new File(Utils.getLocalDirectory() + "Teleonome.denome"));
+			denomeJSONObject = new JSONObject(denomeFileInString);
+			
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			logger.info(Utils.getStringException(e));
+		}catch (InvalidDenomeException e) {
+			// TODO Auto-generated catch block
+			logger.warn(Utils.getStringException(e));
+		} 
+		
 		//
 		// now check the heart status
 		//
@@ -92,8 +133,7 @@ public class Medula {
 		denomeJSONObject = new JSONObject(denomeFileInString);
 		boolean late;
 		String heartLastPulseDate = denomeJSONObject.getString(TeleonomeConstants.PULSE_TIMESTAMP);
-		Calendar cal = Calendar.getInstance();//TimeZone.getTimeZone("GMT+10:00"));
-		Date faultDate = cal.getTime();
+		
 		
 		
 		try {
@@ -220,43 +260,7 @@ public class Medula {
 			e1.printStackTrace();
 		}
 	
-		try {
-			denomeFileInString = FileUtils.readFileToString(new File(Utils.getLocalDirectory() + "Teleonome.denome"));
-			boolean validJSONFormat=true;
-			
-			
-			if(denomeFileInString.length()==0){
-				validJSONFormat=false;
-			}else {
-				//
-				// now try to create a jsonobject, if you get an exception cop \y the backup
-				//
-				try{
-					denomeJSONObject = new JSONObject(denomeFileInString);
-				}catch (JSONException e) {
-					//
-					// if we are here is
-					logger.warn(Utils.getStringException(e));
-					validJSONFormat=false;
-				}
-			}
-			
-			if(!validJSONFormat) {
-				FileUtils.deleteQuietly(new File(Utils.getLocalDirectory() + "Teleonome.denome"));
-				FileUtils.copyFile(new File(Utils.getLocalDirectory() + "Teleonome.previous_pulse"), new File(Utils.getLocalDirectory() + "Teleonome.denome"));
-				addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_CORRUPT_PULSE_FILE,"");
-			}
-
-			denomeFileInString = FileUtils.readFileToString(new File(Utils.getLocalDirectory() + "Teleonome.denome"));
-			denomeJSONObject = new JSONObject(denomeFileInString);
-			
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			logger.info(Utils.getStringException(e));
-		}catch (InvalidDenomeException e) {
-			// TODO Auto-generated catch block
-			logger.warn(Utils.getStringException(e));
-		} 
+		
 
 		try {
 			hypothalamusPid = Integer.parseInt(FileUtils.readFileToString(new File("PaceMakerProcess.info")).split("@")[0]);
