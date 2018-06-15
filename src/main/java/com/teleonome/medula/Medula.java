@@ -74,12 +74,15 @@ public class Medula {
 		Date faultDate = cal.getTime();
 		
 		try {
+			logger.info("checking the Teleonome.denome filet" );
 			denomeFileInString = FileUtils.readFileToString(new File(Utils.getLocalDirectory() + "Teleonome.denome"));
 			boolean validJSONFormat=true;
 			
 			
 			if(denomeFileInString.length()==0){
 				validJSONFormat=false;
+				logger.info("Teleonome.denome has zero length" );
+				
 			}else {
 				//
 				// now try to create a jsonobject, if you get an exception cop \y the backup
@@ -95,6 +98,7 @@ public class Medula {
 			}
 			
 			if(!validJSONFormat) {
+				logger.info("removing Teleonome.denome  and copying from previous_pulse" );
 				FileUtils.deleteQuietly(new File(Utils.getLocalDirectory() + "Teleonome.denome"));
 				FileUtils.copyFile(new File(Utils.getLocalDirectory() + "Teleonome.previous_pulse"), new File(Utils.getLocalDirectory() + "Teleonome.denome"));
 				addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_CORRUPT_PULSE_FILE,"");
@@ -102,6 +106,7 @@ public class Medula {
 
 			denomeFileInString = FileUtils.readFileToString(new File(Utils.getLocalDirectory() + "Teleonome.denome"));
 			denomeJSONObject = new JSONObject(denomeFileInString);
+			logger.info("removing Teleonome.denome  and copying from previous_pulse" );
 			
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
