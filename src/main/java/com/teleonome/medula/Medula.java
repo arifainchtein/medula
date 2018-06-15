@@ -54,7 +54,10 @@ public class Medula {
 	private int heartPid, hypothalamusPid, tomcatPid;
 	private double MAXIMUM_HEART_DB_SIZE=30*1024*1024;
 	public Medula(){
-		
+		String fileName =  Utils.getLocalDirectory() + "lib/Log4J.properties";
+		PropertyConfigurator.configure(fileName);
+		logger = Logger.getLogger(getClass());
+		logger.info("Starting Medula at " + new Date() + " buildNumber=" + buildNumber);
 		try {
 			FileUtils.writeStringToFile(new File("MedulaBuild.info"), buildNumber);
 		} catch (IOException e1) {
@@ -64,10 +67,7 @@ public class Medula {
 	}
 
 	public void monitor() {
-		String fileName =  Utils.getLocalDirectory() + "lib/Log4J.properties";
-		PropertyConfigurator.configure(fileName);
-		logger = Logger.getLogger(getClass());
-		logger.info("Starting Medula at " + new Date() + " buildNumber=" + buildNumber);
+		
 		String denomeFileInString = null;
 		JSONObject denomeJSONObject;
 		Calendar cal = Calendar.getInstance();//TimeZone.getTimeZone("GMT+10:00"));
