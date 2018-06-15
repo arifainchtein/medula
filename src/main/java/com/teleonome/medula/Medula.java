@@ -67,22 +67,22 @@ public class Medula {
 	}
 
 	public void monitor() {
-		
+
 		String denomeFileInString = null;
 		JSONObject denomeJSONObject;
 		Calendar cal = Calendar.getInstance();//TimeZone.getTimeZone("GMT+10:00"));
 		Date faultDate = cal.getTime();
-		
+
 		try {
 			logger.info("checking the Teleonome.denome filet" );
 			denomeFileInString = FileUtils.readFileToString(new File(Utils.getLocalDirectory() + "Teleonome.denome"));
 			boolean validJSONFormat=true;
-			
-			
+
+
 			if(denomeFileInString.length()==0){
 				validJSONFormat=false;
 				logger.info("Teleonome.denome has zero length" );
-				
+
 			}else {
 				//
 				// now try to create a jsonobject, if you get an exception cop \y the backup
@@ -96,7 +96,7 @@ public class Medula {
 					validJSONFormat=false;
 				}
 			}
-			
+
 			if(!validJSONFormat) {
 				logger.info("removing Teleonome.denome  and copying from previous_pulse" );
 				FileUtils.deleteQuietly(new File(Utils.getLocalDirectory() + "Teleonome.denome"));
@@ -107,7 +107,7 @@ public class Medula {
 			denomeFileInString = FileUtils.readFileToString(new File(Utils.getLocalDirectory() + "Teleonome.denome"));
 			denomeJSONObject = new JSONObject(denomeFileInString);
 			logger.info("removing Teleonome.denome  and copying from previous_pulse" );
-			
+
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			logger.info(Utils.getStringException(e));
@@ -115,7 +115,7 @@ public class Medula {
 			// TODO Auto-generated catch block
 			logger.warn(Utils.getStringException(e));
 		} 
-		
+
 		//
 		// now check the heart status
 		//
@@ -126,7 +126,7 @@ public class Medula {
 			// TODO Auto-generated catch block
 			e3.printStackTrace();
 		}
-		
+
 		// first check to see if the heart has received a pulse lately, read file heart/HeartTeleonome.denome
 		// 
 		try {
@@ -138,9 +138,9 @@ public class Medula {
 		denomeJSONObject = new JSONObject(denomeFileInString);
 		boolean late;
 		String heartLastPulseDate = denomeJSONObject.getString(TeleonomeConstants.PULSE_TIMESTAMP);
-		
-		
-		
+
+
+
 		try {
 			late= isPulseLate( denomeJSONObject);
 			if(late ){
@@ -148,37 +148,37 @@ public class Medula {
 				//
 				// if we are late, check to see if the pacemaker is running, 
 				// get the processid
-				
-					ArrayList results = Utils.executeCommand("ps -p " + heartPid);
-					String data =  " Heart Last Pulse at " + heartLastPulseDate + String.join(", ", results);
-					
+
+				ArrayList results = Utils.executeCommand("ps -p " + heartPid);
+				String data =  " Heart Last Pulse at " + heartLastPulseDate + String.join(", ", results);
+
+				//
+				// if the pacemaker is running it will return two lines like:
+				//PID TTY          TIME CMD
+				//1872 pts/0    00:02:45 java
+				//if it only returns one line then the process is not running
+				if(results.size()<2){
+					logger.info("heart is not running");
+					addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HEART_DIED, "data=" + data);
+				}else{
+					logger.info("heart is  running but still late, killing it... data=" + data);
+
 					//
-					// if the pacemaker is running it will return two lines like:
-					//PID TTY          TIME CMD
-					//1872 pts/0    00:02:45 java
-					//if it only returns one line then the process is not running
-					if(results.size()<2){
-						logger.info("heart is not running");
-						addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HEART_DIED, "data=" + data);
-					}else{
-						logger.info("heart is  running but still late, killing it... data=" + data);
-						
-						//
-						// add a pathology dene to the pulse
-						//
-						
-						addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HEART_PULSE_LATE,data);
-						
-						Utils.executeCommand("sudo kill -9  " + heartPid);
-						Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/heart.mapdb*");
-					}
-					
-					
-					copyLogFiles(faultDate);
-				
-					 results = Utils.executeCommand("/home/pi/Teleonome/StartHeartBG.sh");
-					 data = "restarted the heart command response="  +String.join(", ", results);
-					logger.warn("after restarting heart while still in medule data=" + data);
+					// add a pathology dene to the pulse
+					//
+
+					addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HEART_PULSE_LATE,data);
+
+					Utils.executeCommand("sudo kill -9  " + heartPid);
+					Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/heart.mapdb*");
+				}
+
+
+				copyLogFiles(faultDate);
+
+				results = Utils.executeCommand("/home/pi/Teleonome/StartHeartBG.sh");
+				data = "restarted the heart command response="  +String.join(", ", results);
+				logger.warn("after restarting heart while still in medule data=" + data);
 
 			}
 
@@ -192,10 +192,10 @@ public class Medula {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
-		
-		
-		
+
+
+
+
 		try {
 			//
 			// until they fixed mockette, check for an hprof file
@@ -208,7 +208,7 @@ public class Medula {
 				// remove previous hprog
 				//
 				Arrays.stream(dir.listFiles((f, p) -> p.endsWith("hprog"))).forEach(File::delete);    
-				
+
 				StringBuffer data1=new StringBuffer();;
 				logger.info("foound hprof file, renaming them to hprog" );
 				File destFile;
@@ -220,7 +220,7 @@ public class Medula {
 					data1.append(files[i].getAbsolutePath() + ".hprog");
 					FileUtils.moveFile(files[i],destFile);
 				}
-				
+
 				//
 				// add a pathology dene to the pulse
 				//
@@ -234,14 +234,14 @@ public class Medula {
 				copyLogFiles(faultDate);
 				//ArrayList results = Utils.executeCommand("sudo reboot");
 				logger.warn("restarting heart process");
-				
+
 				ArrayList results = Utils.executeCommand("/home/pi/Teleonome/StartHeartBG.sh");
 				String data = "restarted the heart command response="  +String.join(", ", results);
 				logger.warn("after restarting heart while still in medule data=" + data);
 			}
 		}catch(IOException e) {
 			logger.warn(Utils.getStringException(e));
-			
+
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -252,20 +252,20 @@ public class Medula {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
+
 		//
 		// read the denome file and see when was the last pulse
 		// as it is in the denome
 
-		
+
 		try {
 			FileUtils.writeStringToFile(new File("Medula.info"), buildNumber);
 		} catch (IOException e1) {
 			// TODO Auto-generated catch block
 			e1.printStackTrace();
 		}
-	
-		
+
+
 
 		try {
 			hypothalamusPid = Integer.parseInt(FileUtils.readFileToString(new File("PaceMakerProcess.info")).split("@")[0]);
@@ -273,20 +273,20 @@ public class Medula {
 			// TODO Auto-generated catch block
 			e3.printStackTrace();
 		}
-		
-		
+
+
 		try{	
-			
-			 late= isPulseLate( denomeJSONObject);
+
+			late= isPulseLate( denomeJSONObject);
 			String lastPulseDate = denomeJSONObject.getString(TeleonomeConstants.PULSE_TIMESTAMP);
-			
+
 			if(late){
 				logger.info("we are late, seconds since currentPulseFrequency=" + currentPulseFrequency + " numberOfPulsesBeforeIsLate=" + numberOfPulsesBeforeIsLate + " last pulse=" + timeSinceLastPulse/1000 + " maximum number of seconds =" + (numberOfPulsesBeforeIsLate*currentPulseFrequency)/1000);
 				//
 				// if we are late, check to see if the pacemaker is running, 
 				// get the processid
 				try {
-					
+
 					ArrayList results = Utils.executeCommand("ps -p " + hypothalamusPid);
 					//
 					// if the pacemaker is running it will return two lines like:
@@ -309,11 +309,11 @@ public class Medula {
 					}
 					logger.info("Medula is rebooting from hypothalamus problem...");
 					copyLogFiles(faultDate);
-					 Process p = Runtime.getRuntime().exec("sudo reboot");
-					 System.exit(0);
-					 data = "Reboot command response="  +String.join(", ", results);
+					Process p = Runtime.getRuntime().exec("sudo reboot");
+					System.exit(0);
+					data = "Reboot command response="  +String.join(", ", results);
 					logger.warn("after executing reboot command and while still in medule data=" + data);
-				
+
 				} catch (IOException e1) {
 					// TODO Auto-generated catch block
 					logger.warn(Utils.getStringException(e1));
@@ -323,12 +323,12 @@ public class Medula {
 				}
 
 			}
-			
-			
-				
-				
-				
-			
+
+
+
+
+
+
 			//
 			// now check the tomcat ping
 			//
@@ -339,7 +339,7 @@ public class Medula {
 			try {
 				long lastTomcatPingMillis = Long.parseLong(FileUtils.readFileToString(new File("WebServerPing.info")));
 				long now = System.currentTimeMillis();
-				
+
 				if(now>(lastTomcatPingMillis*60*3)){
 					logger.info("tomcat ping late, now=" + now + " lastTomcatPingMillis=" + lastTomcatPingMillis);
 					addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_TOMCAT_PING_LATE,"Last Tomcat Ping at at " + simpleFormatter.format(new Timestamp(lastTomcatPingMillis)));
@@ -347,9 +347,9 @@ public class Medula {
 					ArrayList results = Utils.executeCommand("sudo reboot");
 					String data = "Reboot command response="  +String.join(", ", results);
 					logger.warn("Medula is rebooting from tomcat problem, reboot data=" + data);
-					
+
 				}
-				
+
 			} catch (IOException e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
@@ -357,7 +357,7 @@ public class Medula {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			
+
 			//
 			// check the size of the heartdb
 			File file = new File(Utils.getLocalDirectory() + "heart" + File.separator +  "heart.mapdb.p");
@@ -371,21 +371,21 @@ public class Medula {
 					ArrayList results = Utils.executeCommand("sudo kill -9  " + heartPid);
 					String resultsString = String.join(", ", results);
 					logger.warn("After killing heart, results=" + resultsString);
-					
+
 					//Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/heart.mapdb*");
-					
+
 					file.delete();
 					File file2 = new File(Utils.getLocalDirectory() + "heart" + File.separator +  "heart.mapdb.t");
 					file2.delete();
 					File file3 = new File(Utils.getLocalDirectory() + "heart" + File.separator +  "heart.mapdb");
 					file3.delete();
-					
+
 					logger.warn("After erasing three files, results=" + resultsString);
-					
+
 					Utils.executeCommand("cd /home/pi/Teleonome/heart && sudo sh NoHupStartHeart.sh");
-					
+
 					int heartDBNewSize = (int)(file.length()/(1024*1024));
-					
+
 					logger.warn("Restarted the heart succesfully, heartDBNewSize=" + heartDBNewSize);
 					restartOk=true;
 				} catch (IOException | InterruptedException e) {
@@ -399,23 +399,23 @@ public class Medula {
 						try {
 							Utils.executeCommand("sudo kill -9  " + heartPid);
 							Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/heart.mapdb*");
-							
+
 						} catch (IOException | InterruptedException e) {
 							// TODO Auto-generated catch block
 							logger.warn(Utils.getStringException(e));
 						}
-						
+
 						try {
-							
+
 							Utils.executeCommand("sudo kill -9  " + hypothalamusPid);
 						} catch (IOException | InterruptedException e) {
 							// TODO Auto-generated catch block
 							logger.warn(Utils.getStringException(e));
 						}
-						
-						
+
+
 						copyLogFiles(faultDate);
-						
+
 						ArrayList results;
 						try {
 							results = Utils.executeCommand("sudo reboot");
@@ -425,22 +425,22 @@ public class Medula {
 							// TODO Auto-generated catch block
 							logger.warn(Utils.getStringException(e));
 						}
-						
-						
+
+
 					}
 				}
 			}
-			
+
 			//
 			// if we are here it means we are ok
 			//
-//			DecimalFormat df = new DecimalFormat(".##");
-//			logger.info("we are ok, seconds since last pulse=" + timeSinceLastPulse/1000 + " maximum time before is late " + (numberOfPulsesBeforeIsLate*currentPulseFrequency)/1000+ " heartdb size= "+ df.format(heartDBOriginalSize));			
-//			
+			//			DecimalFormat df = new DecimalFormat(".##");
+			//			logger.info("we are ok, seconds since last pulse=" + timeSinceLastPulse/1000 + " maximum time before is late " + (numberOfPulsesBeforeIsLate*currentPulseFrequency)/1000+ " heartdb size= "+ df.format(heartDBOriginalSize));			
+			//			
 			logger.info("we are ok, seconds since last pulse=" + timeSinceLastPulse/1000 + " maximum time before is late " + (numberOfPulsesBeforeIsLate*currentPulseFrequency)/1000+ " heartdb size="+ heartDBOriginalSize+"mb maximumheartdb size=" + ((int)MAXIMUM_HEART_DB_SIZE/(1024*1024)) +"mb");			
 
-			
-			
+
+
 		}catch (JSONException e) {
 			// TODO Auto-generated catch block
 			logger.info(Utils.getStringException(e));
@@ -453,10 +453,10 @@ public class Medula {
 		logger.info("Ending Medula at " + new Date());
 
 	}
-	
-	
+
+
 	private void copyLogFiles(Date faultDate) {
-		
+
 		String srcFolderName="/home/pi/Teleonome/logs/" ;
 		String destFolderName="/home/pi/Teleonome/logs/" + faultDate.getTime() + "/";
 		String destFolderWebRootName="/home/pi/Teleonome/tomcat/webapps/ROOT/logs/" + faultDate.getTime() + "/";
@@ -465,128 +465,140 @@ public class Medula {
 		destFolder.mkdirs();
 		File destFolderWebRoot = new File(destFolderWebRootName);
 		destFolderWebRoot.mkdirs();
-		
+
 		File srcFile = new File(srcFolderName + "TeleonomeHypothalamus.txt");
 		File destFile =  new File(destFolderName + "TeleonomeHypothalamus.txt");
 		File destFileWeb =  new File(destFolderWebRootName + "TeleonomeHypothalamus.txt");
-		try {
-			FileUtils.copyFile(srcFile, destFile);
-			FileUtils.copyFile(srcFile, destFileWeb);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			logger.warn(Utils.getStringException(e));
-		}
-		 srcFile = new File(srcFolderName + "PulseThread.txt");
-		 destFile =  new File(destFolderName + "PulseThread.txt");
-		  destFileWeb =  new File(destFolderWebRootName + "PulseThread.txt");
-		try {
-			FileUtils.copyFile(srcFile, destFile);
-			FileUtils.copyFile(srcFile, destFileWeb);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			logger.warn(Utils.getStringException(e));
-			
-		}
-		
-		 srcFile = new File(srcFolderName + "DenomeManager.txt");
-		 destFile =  new File(destFolderName + "DenomeManager.txt");
-		  destFileWeb =  new File(destFolderWebRootName + "DenomeManager.txt");
-		try {
-			FileUtils.copyFile(srcFile, destFile);
-			FileUtils.copyFile(srcFile, destFileWeb);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			logger.warn(Utils.getStringException(e));
-			
-		}
-		
-		 srcFile = new File(srcFolderName + "Medula.txt");
-		 destFile =  new File(destFolderName + "Medula.txt");
-		  destFileWeb =  new File(destFolderWebRootName + "Medula.txt");
-		try {
-			FileUtils.copyFile(srcFile, destFile);
-			FileUtils.copyFile(srcFile, destFileWeb);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			logger.warn(Utils.getStringException(e));
-		}
-		
-		 srcFile = new File(srcFolderName + "MnemosyneManager.txt");
-		 destFile =  new File(destFolderName + "MnemosyneManager.txt");
-		  destFileWeb =  new File(destFolderWebRootName + "MnemosyneManager.txt");
-		try {
-			FileUtils.copyFile(srcFile, destFile);
-			FileUtils.copyFile(srcFile, destFileWeb);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			logger.warn(Utils.getStringException(e));
-		}
-		
-		 srcFile = new File(srcFolderName + "ArduinoUno.txt");
-		 destFile =  new File(destFolderName + "ArduinoUno.txt");
-		  destFileWeb =  new File(destFolderWebRootName + "ArduinoUno.txt");
-		try {
-			FileUtils.copyFile(srcFile, destFile);
-			FileUtils.copyFile(srcFile, destFileWeb);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			logger.warn(Utils.getStringException(e));
-		}
-		
-		srcFile = new File(srcFolderName + "gc.log");
-		 destFile =  new File(destFolderName + "gc.log");
-		  destFileWeb =  new File(destFolderWebRootName + "gc.log");
-		 
-		try {
-			FileUtils.copyFile(srcFile, destFile);
-			FileUtils.copyFile(srcFile, destFileWeb);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		//
-		// heart
-		//
-		 srcFolderName="/home/pi/Teleonome/heart/logs/" ;
-		
-		srcFile = new File(srcFolderName + "PublisherListener.txt");
-		 destFile =  new File(destFolderName + "PublisherListener.txt");
-		 destFileWeb =  new File(destFolderWebRootName + "PublisherListener.txt");
-		try {
-			FileUtils.copyFile(srcFile, destFile);
-			FileUtils.copyFile(srcFile, destFileWeb);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			logger.warn(Utils.getStringException(e));
-			
-		}
-		
-		srcFile = new File(srcFolderName + "Heart.txt");
-		 destFile =  new File(destFolderName + "Heart.txt");
-		  destFileWeb =  new File(destFolderWebRootName + "Heart.txt");
-		try {
-			FileUtils.copyFile(srcFile, destFile);
-			FileUtils.copyFile(srcFile, destFileWeb);
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			logger.warn(Utils.getStringException(e));
-			
-		}
-		
-		 srcFolderName="/home/pi/Teleonome/heart/" ;
-			
-			srcFile = new File(srcFolderName + "gc.log");
-			 destFile =  new File(destFolderName + "heartgc.log");
-			  destFileWeb =  new File(destFolderWebRootName + "gc.log");
+		if(srcFile.isFile()) {
 			try {
 				FileUtils.copyFile(srcFile, destFile);
 				FileUtils.copyFile(srcFile, destFileWeb);
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				logger.warn(Utils.getStringException(e));
-				
 			}
-			
+		}
+		if(srcFile.isFile()) {
+			srcFile = new File(srcFolderName + "PulseThread.txt");
+			destFile =  new File(destFolderName + "PulseThread.txt");
+			destFileWeb =  new File(destFolderWebRootName + "PulseThread.txt");
+			try {
+				FileUtils.copyFile(srcFile, destFile);
+				FileUtils.copyFile(srcFile, destFileWeb);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				logger.warn(Utils.getStringException(e));
+
+			}
+		}
+
+		if(srcFile.isFile()) {
+			srcFile = new File(srcFolderName + "DenomeManager.txt");
+
+			destFile =  new File(destFolderName + "DenomeManager.txt");
+			destFileWeb =  new File(destFolderWebRootName + "DenomeManager.txt");
+			try {
+				FileUtils.copyFile(srcFile, destFile);
+				FileUtils.copyFile(srcFile, destFileWeb);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				logger.warn(Utils.getStringException(e));
+
+			}
+		}
+		if(srcFile.isFile()) {
+			srcFile = new File(srcFolderName + "Medula.txt");
+			destFile =  new File(destFolderName + "Medula.txt");
+			destFileWeb =  new File(destFolderWebRootName + "Medula.txt");
+			try {
+				FileUtils.copyFile(srcFile, destFile);
+				FileUtils.copyFile(srcFile, destFileWeb);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				logger.warn(Utils.getStringException(e));
+			}
+		}
+		if(srcFile.isFile()) {
+			srcFile = new File(srcFolderName + "MnemosyneManager.txt");
+			destFile =  new File(destFolderName + "MnemosyneManager.txt");
+			destFileWeb =  new File(destFolderWebRootName + "MnemosyneManager.txt");
+			try {
+				FileUtils.copyFile(srcFile, destFile);
+				FileUtils.copyFile(srcFile, destFileWeb);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				logger.warn(Utils.getStringException(e));
+			}
+		}
+		if(srcFile.isFile()) {
+			srcFile = new File(srcFolderName + "ArduinoUno.txt");
+			destFile =  new File(destFolderName + "ArduinoUno.txt");
+			destFileWeb =  new File(destFolderWebRootName + "ArduinoUno.txt");
+			try {
+				FileUtils.copyFile(srcFile, destFile);
+				FileUtils.copyFile(srcFile, destFileWeb);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				logger.warn(Utils.getStringException(e));
+			}
+		}
+		if(srcFile.isFile()) {
+			srcFile = new File(srcFolderName + "gc.log");
+			destFile =  new File(destFolderName + "gc.log");
+			destFileWeb =  new File(destFolderWebRootName + "gc.log");
+
+			try {
+				FileUtils.copyFile(srcFile, destFile);
+				FileUtils.copyFile(srcFile, destFileWeb);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		//
+		// heart
+		//
+		srcFolderName="/home/pi/Teleonome/heart/logs/" ;
+		if(srcFile.isFile()) {
+			srcFile = new File(srcFolderName + "PublisherListener.txt");
+			destFile =  new File(destFolderName + "PublisherListener.txt");
+			destFileWeb =  new File(destFolderWebRootName + "PublisherListener.txt");
+			try {
+				FileUtils.copyFile(srcFile, destFile);
+				FileUtils.copyFile(srcFile, destFileWeb);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				logger.warn(Utils.getStringException(e));
+
+			}
+		}
+		if(srcFile.isFile()) {
+			srcFile = new File(srcFolderName + "Heart.txt");
+			destFile =  new File(destFolderName + "Heart.txt");
+			destFileWeb =  new File(destFolderWebRootName + "Heart.txt");
+			try {
+				FileUtils.copyFile(srcFile, destFile);
+				FileUtils.copyFile(srcFile, destFileWeb);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				logger.warn(Utils.getStringException(e));
+
+			}
+		}
+		srcFolderName="/home/pi/Teleonome/heart/" ;
+		if(srcFile.isFile()) {
+			srcFile = new File(srcFolderName + "gc.log");
+			destFile =  new File(destFolderName + "heartgc.log");
+			destFileWeb =  new File(destFolderWebRootName + "gc.log");
+			try {
+				FileUtils.copyFile(srcFile, destFile);
+				FileUtils.copyFile(srcFile, destFileWeb);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				logger.warn(Utils.getStringException(e));
+
+			}
+		}
 	}
 
 	private boolean isPulseLate(JSONObject denomeJSONObject) throws InvalidDenomeException {
@@ -619,16 +631,16 @@ public class Medula {
 		//currentPulseFrequency < currentPulseGenerationDuration in this case we are in a teleonome that 
 		// takes a long time to complete a pulse cycle.  For example a teleonome that is processing analyticons
 		// or mnemosycons might take 20 minutes to complete the pulse and wait one minute before starting again
-		
+
 		boolean late=(numberOfPulsesBeforeIsLate*(currentPulseFrequency  + currentPulseGenerationDuration))< timeSinceLastPulse;
-		
-		
-//		boolean late=false;
-//		if(currentPulseFrequency > currentPulseGenerationDuration) {
-//			if((numberOfPulsesBeforeIsLate*(currentPulseFrequency  + currentPulseGenerationDuration))< timeSinceLastPulse)late=true;
-//		}else {
-//			if((numberOfPulsesBeforeIsLate*currentPulseGenerationDuration)< timeSinceLastPulse)late=true;
-//		}
+
+
+		//		boolean late=false;
+		//		if(currentPulseFrequency > currentPulseGenerationDuration) {
+		//			if((numberOfPulsesBeforeIsLate*(currentPulseFrequency  + currentPulseGenerationDuration))< timeSinceLastPulse)late=true;
+		//		}else {
+		//			if((numberOfPulsesBeforeIsLate*currentPulseGenerationDuration)< timeSinceLastPulse)late=true;
+		//		}
 		return late;
 	}
 
@@ -645,7 +657,7 @@ public class Medula {
 			String tN = denome.getString("Name");
 
 
-		
+
 
 
 			//
@@ -664,12 +676,12 @@ public class Medula {
 			extraDeneWords.addElement(pathologyDeneDeneWord);
 			pathologyDeneDeneWord = Utils.createDeneWordJSONObject(TeleonomeConstants.PATHOLOGY_EVENT_TIMESTAMP, simpleFormatter.format(faultTime) ,null,"long",true);
 			extraDeneWords.addElement(pathologyDeneDeneWord);
-			
+
 			pathologyDeneDeneWord = Utils.createDeneWordJSONObject(TeleonomeConstants.PATHOLOGY_DETAILS_LABEL, data ,null,"String",true);
 			extraDeneWords.addElement(pathologyDeneDeneWord);
 			//JSONObject pathologyDeneChain = DenomeUtils.getDeneChainByName(denomeJSONObject, TeleonomeConstants.NUCLEI_MNEMOSYNE,TeleonomeConstants.DENECHAIN_MNEMOSYNE_PATHOLOGY);
 
-			
+
 			JSONArray pathologyDenes=null, pathologyDeneDeneWords;
 			JSONObject pathologyDene;
 			try {
@@ -689,12 +701,12 @@ public class Medula {
 			pathologyDene.put("Name", pathologyName);
 			pathologyDeneDeneWords = new JSONArray();
 			pathologyDene.put(TeleonomeConstants.DENE_DENE_TYPE_ATTRIBUTE, TeleonomeConstants.DENE_PATHOLOGY);
-			
+
 			LocalDateTime currentTime = LocalDateTime.now();
 			DateTimeFormatter formatter = DateTimeFormatter.ofPattern(TeleonomeConstants.MNEMOSYNE_TIME_FORMAT);
 			String formatedCurrentTime = currentTime.format(formatter);
 			pathologyDene.put(TeleonomeConstants.DATATYPE_TIMESTAMP, formatedCurrentTime);
-			
+
 			pathologyDene.put(TeleonomeConstants.DATATYPE_TIMESTAMP_MILLISECONDS, System.currentTimeMillis());
 			pathologyDene.put("DeneWords", pathologyDeneDeneWords);
 			//
@@ -892,9 +904,9 @@ public class Medula {
 		}else {
 			new Medula().monitor();
 		}
-		
 
-		
+
+
 	}
 
 }
