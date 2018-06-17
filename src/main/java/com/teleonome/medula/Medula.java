@@ -89,6 +89,7 @@ public class Medula {
 				//
 				try{
 					denomeJSONObject = new JSONObject(denomeFileInString);
+					logger.info("Teleonome.denome denome is valid json, "  );
 				}catch (JSONException e) {
 					//
 					// if we are here is
@@ -107,7 +108,7 @@ public class Medula {
 
 			denomeFileInString = FileUtils.readFileToString(new File(Utils.getLocalDirectory() + "Teleonome.denome"));
 			denomeJSONObject = new JSONObject(denomeFileInString);
-			logger.info("removing Teleonome.denome  and copying from previous_pulse" );
+			logger.info("denome JSObject was created ok" );
 
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
