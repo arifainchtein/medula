@@ -176,7 +176,7 @@ public class Medula {
 
 				copyLogFiles(faultDate);
 
-				results = Utils.executeCommand("/home/pi/Teleonome/StartHeartBG.sh");
+				results = Utils.executeCommand("/home/pi/Teleonome/heart/StartHeartBG.sh");
 				data = "restarted the heart command response="  +String.join(", ", results);
 				logger.warn("after restarting heart while still in medule data=" + data);
 
