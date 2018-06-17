@@ -617,8 +617,7 @@ public class Medula {
 
 		identity = new Identity(tN, TeleonomeConstants.NUCLEI_PURPOSE, TeleonomeConstants.DENECHAIN_OPERATIONAL_DATA, TeleonomeConstants.DENE_VITAL, TeleonomeConstants.DENEWORD_TYPE_CURRENT_PULSE_GENERATION_DURATION);
 		currentPulseGenerationDuration = (Integer)DenomeUtils.getDeneWordByIdentity(denomeJSONObject, identity, TeleonomeConstants.DENEWORD_VALUE_ATTRIBUTE);
-		logger.info("currentPulseFrequency=" + currentPulseFrequency + " numberOfPulsesBeforeIsLate=" + numberOfPulsesBeforeIsLate);
-
+		
 		long now = System.currentTimeMillis();
 		timeSinceLastPulse =  now - lastPulseMillis;
 
@@ -631,8 +630,9 @@ public class Medula {
 		//currentPulseFrequency < currentPulseGenerationDuration in this case we are in a teleonome that 
 		// takes a long time to complete a pulse cycle.  For example a teleonome that is processing analyticons
 		// or mnemosycons might take 20 minutes to complete the pulse and wait one minute before starting again
-
+		
 		boolean late=(numberOfPulsesBeforeIsLate*(currentPulseFrequency  + currentPulseGenerationDuration))< timeSinceLastPulse;
+		logger.info("late=" + late + " timeSinceLastPulse=" + timeSinceLastPulse + " currentPulseGenerationDuration=" + currentPulseGenerationDuration + " currentPulseFrequency=" + currentPulseFrequency + " numberOfPulsesBeforeIsLate=" + numberOfPulsesBeforeIsLate);
 
 
 		//		boolean late=false;
