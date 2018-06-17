@@ -74,10 +74,10 @@ public class Medula {
 		Date faultDate = cal.getTime();
 
 		try {
-			logger.info("checking the Teleonome.denome filet" );
 			denomeFileInString = FileUtils.readFileToString(new File(Utils.getLocalDirectory() + "Teleonome.denome"));
 			boolean validJSONFormat=true;
-
+			logger.info("checking the Teleonome.denome first, length=" + denomeFileInString.length() );
+			
 
 			if(denomeFileInString.length()==0){
 				validJSONFormat=false;
@@ -92,6 +92,7 @@ public class Medula {
 				}catch (JSONException e) {
 					//
 					// if we are here is
+					logger.info("Teleonome.denome does not convert to a valid json object" );
 					logger.warn(Utils.getStringException(e));
 					validJSONFormat=false;
 				}
