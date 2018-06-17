@@ -193,7 +193,60 @@ public class Medula {
 			e.printStackTrace();
 		}
 
+		try {
+			//
+			// if the subscriberthread bug reappears
+			//
+			File dir = new File(Utils.getLocalDirectory() );
+			FileFilter fileFilter = new WildcardFileFilter("*.hprof");
+			File[] files = dir.listFiles(fileFilter);
+			if(files.length>0) {
+				//
+				// remove previous hprog
+				//
+				Arrays.stream(dir.listFiles((f, p) -> p.endsWith("hprog"))).forEach(File::delete);    
 
+				StringBuffer data1=new StringBuffer();;
+				logger.info("foound hprof file, renaming them to hprog" );
+				File destFile;
+				for(int i=0;i<files.length;i++) {
+					destFile = new File ("/home/pi/Teleonome/"+ FilenameUtils.getBaseName(files[i].getAbsolutePath()) + ".hprog");
+					if(i>0) {
+						data1.append(",");
+					}
+					data1.append(files[i].getAbsolutePath() + ".hprog");
+					FileUtils.moveFile(files[i],destFile);
+				}
+
+				//
+				// add a pathology dene to the pulse
+				//
+				logger.warn("adding pathology dene");
+				addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HYPOTHALAMUS_DIED,data1.toString());
+				//Utils.executeCommand("sudo kill -9  " + hypothalamusPid);
+				logger.warn("killing teleonomehypothalamus process");
+				Utils.executeCommand("sudo kill -9  " + heartPid);
+				copyLogFiles(faultDate);
+				//ArrayList results = Utils.executeCommand("sudo reboot");
+				logger.warn("restarting TeleonomeHypothalamus process");
+
+				ArrayList results = Utils.executeCommand("/home/pi/Teleonome/StartHypothalamusBG.sh");
+				String data = "restarted the TeleonomeHypothalamus command response="  +String.join(", ", results);
+				logger.warn("after restarting TeleonomeHypothalamus while still in medule data=" + data);
+			}
+		}catch(IOException e) {
+			logger.warn(Utils.getStringException(e));
+
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InvalidDenomeException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (JSONException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 
 
 		try {
@@ -235,7 +288,7 @@ public class Medula {
 				//ArrayList results = Utils.executeCommand("sudo reboot");
 				logger.warn("restarting heart process");
 
-				ArrayList results = Utils.executeCommand("/home/pi/Teleonome/StartHeartBG.sh");
+				ArrayList results = Utils.executeCommand("/home/pi/Teleonome/heart/StartHeartBG.sh");
 				String data = "restarted the heart command response="  +String.join(", ", results);
 				logger.warn("after restarting heart while still in medule data=" + data);
 			}
@@ -468,9 +521,11 @@ public class Medula {
 
 		File srcFile = new File(srcFolderName + "TeleonomeHypothalamus.txt");
 		File destFile =  new File(destFolderName + "TeleonomeHypothalamus.txt");
+		
 		File destFileWeb =  new File(destFolderWebRootName + "TeleonomeHypothalamus.txt");
 		if(srcFile.isFile()) {
-			try {
+			logger.debug("copying file" + srcFile.getAbsolutePath() + " to " + destFile.getAbsolutePath());;
+				try {
 				FileUtils.copyFile(srcFile, destFile);
 				FileUtils.copyFile(srcFile, destFileWeb);
 			} catch (IOException e) {
@@ -479,6 +534,7 @@ public class Medula {
 			}
 		}
 		if(srcFile.isFile()) {
+			logger.debug("copying file" + srcFile.getAbsolutePath() + " to " + destFile.getAbsolutePath());;
 			srcFile = new File(srcFolderName + "PulseThread.txt");
 			destFile =  new File(destFolderName + "PulseThread.txt");
 			destFileWeb =  new File(destFolderWebRootName + "PulseThread.txt");
@@ -493,6 +549,7 @@ public class Medula {
 		}
 
 		if(srcFile.isFile()) {
+			logger.debug("copying file" + srcFile.getAbsolutePath() + " to " + destFile.getAbsolutePath());;
 			srcFile = new File(srcFolderName + "DenomeManager.txt");
 
 			destFile =  new File(destFolderName + "DenomeManager.txt");
@@ -507,6 +564,7 @@ public class Medula {
 			}
 		}
 		if(srcFile.isFile()) {
+			logger.debug("copying file" + srcFile.getAbsolutePath() + " to " + destFile.getAbsolutePath());;
 			srcFile = new File(srcFolderName + "Medula.txt");
 			destFile =  new File(destFolderName + "Medula.txt");
 			destFileWeb =  new File(destFolderWebRootName + "Medula.txt");
@@ -519,6 +577,7 @@ public class Medula {
 			}
 		}
 		if(srcFile.isFile()) {
+			logger.debug("copying file" + srcFile.getAbsolutePath() + " to " + destFile.getAbsolutePath());;
 			srcFile = new File(srcFolderName + "MnemosyneManager.txt");
 			destFile =  new File(destFolderName + "MnemosyneManager.txt");
 			destFileWeb =  new File(destFolderWebRootName + "MnemosyneManager.txt");
@@ -531,6 +590,7 @@ public class Medula {
 			}
 		}
 		if(srcFile.isFile()) {
+			logger.debug("copying file" + srcFile.getAbsolutePath() + " to " + destFile.getAbsolutePath());;
 			srcFile = new File(srcFolderName + "ArduinoUno.txt");
 			destFile =  new File(destFolderName + "ArduinoUno.txt");
 			destFileWeb =  new File(destFolderWebRootName + "ArduinoUno.txt");
@@ -543,6 +603,7 @@ public class Medula {
 			}
 		}
 		if(srcFile.isFile()) {
+			logger.debug("copying file" + srcFile.getAbsolutePath() + " to " + destFile.getAbsolutePath());;
 			srcFile = new File(srcFolderName + "gc.log");
 			destFile =  new File(destFolderName + "gc.log");
 			destFileWeb =  new File(destFolderWebRootName + "gc.log");
@@ -560,6 +621,7 @@ public class Medula {
 		//
 		srcFolderName="/home/pi/Teleonome/heart/logs/" ;
 		if(srcFile.isFile()) {
+			logger.debug("copying file" + srcFile.getAbsolutePath() + " to " + destFile.getAbsolutePath());;
 			srcFile = new File(srcFolderName + "PublisherListener.txt");
 			destFile =  new File(destFolderName + "PublisherListener.txt");
 			destFileWeb =  new File(destFolderWebRootName + "PublisherListener.txt");
@@ -573,6 +635,7 @@ public class Medula {
 			}
 		}
 		if(srcFile.isFile()) {
+			logger.debug("copying file" + srcFile.getAbsolutePath() + " to " + destFile.getAbsolutePath());;
 			srcFile = new File(srcFolderName + "Heart.txt");
 			destFile =  new File(destFolderName + "Heart.txt");
 			destFileWeb =  new File(destFolderWebRootName + "Heart.txt");
@@ -587,6 +650,7 @@ public class Medula {
 		}
 		srcFolderName="/home/pi/Teleonome/heart/" ;
 		if(srcFile.isFile()) {
+			logger.debug("copying file" + srcFile.getAbsolutePath() + " to " + destFile.getAbsolutePath());;
 			srcFile = new File(srcFolderName + "gc.log");
 			destFile =  new File(destFolderName + "heartgc.log");
 			destFileWeb =  new File(destFolderWebRootName + "gc.log");
