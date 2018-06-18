@@ -400,18 +400,15 @@ public class Medula {
 					logger.info("tomcat ping late, now=" + now + " lastTomcatPingMillis=" + lastTomcatPingMillis);
 					addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_TOMCAT_PING_LATE,"Last Tomcat Ping at at " + simpleFormatter.format(new Timestamp(lastTomcatPingMillis)));
 					copyLogFiles(faultDate);
-					ArrayList results = Utils.executeCommand("sudo reboot");
-					String data = "Reboot command response="  +String.join(", ", results);
-					logger.warn("Medula is rebooting from tomcat problem, reboot data=" + data);
+					//ArrayList results = Utils.executeCommand("sudo reboot");
+					//String data = "Reboot command response="  +String.join(", ", results);
+					//logger.warn("Medula is rebooting from tomcat problem, reboot data=" + data);
 
 				}
 
 			} catch (IOException e1) {
 				// TODO Auto-generated catch block
 				e1.printStackTrace();
-			} catch (InterruptedException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
 			}
 
 			//
@@ -473,14 +470,14 @@ public class Medula {
 						copyLogFiles(faultDate);
 
 						ArrayList results;
-						try {
-							results = Utils.executeCommand("sudo reboot");
-							String data = "Reboot command response="  +String.join(", ", results);
-							logger.warn("after executing rebootfrom heart problem command and while still in medule data=" + data);
-						} catch (IOException | InterruptedException e) {
-							// TODO Auto-generated catch block
-							logger.warn(Utils.getStringException(e));
-						}
+//						try {
+//							//results = Utils.executeCommand("sudo reboot");
+//							//String data = "Reboot command response="  +String.join(", ", results);
+//							logger.warn("after executing rebootfrom heart problem command and while still in medule data=" + data);
+//						} catch (IOException | InterruptedException e) {
+//							// TODO Auto-generated catch block
+//							logger.warn(Utils.getStringException(e));
+//						}
 
 
 					}
