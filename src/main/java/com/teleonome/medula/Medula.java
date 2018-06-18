@@ -355,19 +355,20 @@ public class Medula {
 					}else{
 						logger.info("pacemaker is  running but still late, killing it...");
 						Utils.executeCommand("sudo kill -9  " + hypothalamusPid);
-						Utils.executeCommand("sudo kill -9  " + heartPid);
-						Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/heart.mapdb*");
+						//Utils.executeCommand("sudo kill -9  " + heartPid);
+						//Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/heart.mapdb*");
 						//
 						// add a pathology dene to the pulse
 						//
 						addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_PULSE_LATE,data);
 					}
-					logger.info("Medula is rebooting from hypothalamus problem...");
+					logger.info("Medula is about t restart the hypothalamus ...");
 					copyLogFiles(faultDate);
-					Process p = Runtime.getRuntime().exec("sudo reboot");
-					System.exit(0);
-					data = "Reboot command response="  +String.join(", ", results);
-					logger.warn("after executing reboot command and while still in medule data=" + data);
+					//Process p = Runtime.getRuntime().exec("sudo reboot");
+					 results = Utils.executeCommand("/home/pi/Teleonome/StartHypothalamusBG.sh");
+					//System.exit(0);
+					data = "StartHypothalamusBG command response="  +String.join(", ", results);
+					logger.warn("after restarting hypothalamus and while still in medule data=" + data);
 
 				} catch (IOException e1) {
 					// TODO Auto-generated catch block
