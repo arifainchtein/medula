@@ -159,28 +159,29 @@ public class Medula {
 				//PID TTY          TIME CMD
 				//1872 pts/0    00:02:45 java
 				//if it only returns one line then the process is not running
-				if(results.size()<2){
-					logger.info("heart is not running");
-					addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HEART_DIED, "data=" + data);
-				}else{
-					logger.info("heart is  running but still late, killing it... data=" + data);
-
-					//
-					// add a pathology dene to the pulse
-					//
-
-					addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HEART_PULSE_LATE,data);
-
-					Utils.executeCommand("sudo kill -9  " + heartPid);
-					Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/heart.mapdb*");
-				}
-
-
+//				if(results.size()<2){
+//					logger.info("heart is not running");
+//					addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HEART_DIED, "data=" + data);
+//				}else{
+//					logger.info("heart is  running but still late, killing it... data=" + data);
+//
+//					//
+//					// add a pathology dene to the pulse
+//					//
+//
+//					addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HEART_PULSE_LATE,data);
+//
+//					Utils.executeCommand("sudo kill -9  " + heartPid);
+//					Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/heart.mapdb*");
+//				}
+				logger.warn( "about to kill process " + heartPid);
+				results = Utils.executeCommand("sudo kill -9  " + heartPid);
+				logger.warn( data);
 				copyLogFiles(faultDate);
 
 				results = Utils.executeCommand("sudo sh /home/pi/Teleonome/heart/StartHeartBG.sh");
 				data = "restarted the heart command response="  +String.join(", ", results);
-				logger.warn("after restarting heart while still in medule data=" + data);
+				logger.warn( data);
 
 			}
 
@@ -400,7 +401,7 @@ public class Medula {
 					logger.info("tomcat ping late, now=" + now + " lastTomcatPingMillis=" + lastTomcatPingMillis);
 					addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_TOMCAT_PING_LATE,"Last Tomcat Ping at at " + simpleFormatter.format(new Timestamp(lastTomcatPingMillis)));
 					copyLogFiles(faultDate);
-					//ArrayList results = Utils.executeCommand("sudo reboot");
+					//ArrayList results = Utils.executeCommand("File");
 					//String data = "Reboot command response="  +String.join(", ", results);
 					//logger.warn("Medula is rebooting from tomcat problem, reboot data=" + data);
 
@@ -484,15 +485,7 @@ public class Medula {
 				}
 			}
 
-			//
-			// if we are here it means we are ok
-			//
-			//			DecimalFormat df = new DecimalFormat(".##");
-			//			logger.info("we are ok, seconds since last pulse=" + timeSinceLastPulse/1000 + " maximum time before is late " + (numberOfPulsesBeforeIsLate*currentPulseFrequency)/1000+ " heartdb size= "+ df.format(heartDBOriginalSize));			
-			//			
-			logger.info("we are ok, seconds since last pulse=" + timeSinceLastPulse/1000 + " maximum time before is late " + (numberOfPulsesBeforeIsLate*currentPulseFrequency)/1000+ " heartdb size="+ heartDBOriginalSize+"mb maximumheartdb size=" + ((int)MAXIMUM_HEART_DB_SIZE/(1024*1024)) +"mb");			
-
-
+			
 
 		}catch (JSONException e) {
 			// TODO Auto-generated catch block
