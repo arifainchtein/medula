@@ -123,7 +123,7 @@ public class Medula {
 		//
 		logger.info("checking the heart first, starting with checking the last pulse received by the heart" );
 		try {
-			heartPid = Integer.parseInt(FileUtils.readFileToString(new File("heart/HeartProcess.info")).split("@")[0]);
+			heartPid = Integer.parseInt(FileUtils.readFileToString(new File("/home/pi/Teleonome/heart/HeartProcess.info")).split("@")[0]);
 		} catch (NumberFormatException | IOException e3) {
 			// TODO Auto-generated catch block
 			e3.printStackTrace();
@@ -181,8 +181,20 @@ public class Medula {
 
 				results = Utils.executeCommand("sudo sh /home/pi/Teleonome/heart/StartHeartBG.sh");
 				data = "restarted the heart command response="  +String.join(", ", results);
+				
 				logger.warn( data);
 
+				//
+				// now check the heart status
+				//
+				try {
+					heartPid = Integer.parseInt(FileUtils.readFileToString(new File("/home/pi/Teleonome/heart/HeartProcess.info")).split("@")[0]);
+				} catch (NumberFormatException | IOException e3) {
+					// TODO Auto-generated catch block
+					e3.printStackTrace();
+				}
+				logger.info("After restarting, heartPid=" + heartPid  );
+				
 			}
 
 		} catch (IOException e1) {
@@ -283,16 +295,17 @@ public class Medula {
 				logger.warn("adding pathology dene");
 				addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HEART_CRASHED_HPROF,data1.toString());
 				//Utils.executeCommand("sudo kill -9  " + hypothalamusPid);
-				logger.warn("killing heart process");
-				Utils.executeCommand("sudo kill -9  " + heartPid);
+				logger.warn("killing heart process heartPid=" + heartPid);
+				ArrayList results = Utils.executeCommand("sudo kill -9  " + heartPid);
+				String data = "kill heart, response="  +String.join(", ", results);
 				logger.warn("delete mapdb files");
 				Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/heart.mapdb*");
 				copyLogFiles(faultDate);
 				//ArrayList results = Utils.executeCommand("sudo reboot");
 				logger.warn("restarting heart process");
 
-				ArrayList results = Utils.executeCommand("sudo sh /home/pi/Teleonome/heart/StartHeartBG.sh");
-				String data = "restarted the heart command response="  +String.join(", ", results);
+				 results = Utils.executeCommand("sudo sh /home/pi/Teleonome/heart/StartHeartBG.sh");
+				 data = "restarted the heart command response="  +String.join(", ", results);
 				logger.warn("after restarting heart while still in medule data=" + data);
 			}
 		}catch(IOException e) {
