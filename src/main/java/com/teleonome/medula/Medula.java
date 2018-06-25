@@ -511,7 +511,7 @@ public class Medula {
 
 
 		logger.info("Ending Medula at " + new Date());
-
+		System.exit(0);
 	}
 
 
