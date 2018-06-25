@@ -121,14 +121,14 @@ public class Medula {
 		//
 		// now check the heart status
 		//
-		logger.info("checking the heart first, starting with checking the last pulse received by the heart" );
 		try {
 			heartPid = Integer.parseInt(FileUtils.readFileToString(new File("/home/pi/Teleonome/heart/HeartProcess.info")).split("@")[0]);
 		} catch (NumberFormatException | IOException e3) {
 			// TODO Auto-generated catch block
 			e3.printStackTrace();
 		}
-
+		logger.info("checking the heart, heartPid=" +heartPid );
+		
 		// first check to see if the heart has received a pulse lately, read file heart/HeartTeleonome.denome
 		// 
 		try {
@@ -176,6 +176,7 @@ public class Medula {
 //				}
 				logger.warn( "about to kill process " + heartPid);
 				results = Utils.executeCommand("sudo kill -9  " + heartPid);
+				data = "killing the heart command response="  +String.join(", ", results);
 				logger.warn( data);
 				copyLogFiles(faultDate);
 
