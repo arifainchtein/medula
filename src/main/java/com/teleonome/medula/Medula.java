@@ -243,10 +243,10 @@ public class Medula {
 				logger.warn("killing teleonomehypothalamus process");
 				Utils.executeCommand("sudo kill -9  " + heartPid);
 				copyLogFiles(faultDate);
-				//ArrayList results = Utils.executeCommand("sudo reboot");
+				ArrayList results = Utils.executeCommand("sudo reboot");
 				logger.warn("restarting TeleonomeHypothalamus process");
 
-				ArrayList results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartHypothalamusBG.sh");
+				//ArrayList results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartHypothalamusBG.sh");
 				String data = "restarted the TeleonomeHypothalamus command response="  +String.join(", ", results);
 				logger.warn("after restarting TeleonomeHypothalamus while still in medule data=" + data);
 			}
@@ -302,10 +302,10 @@ public class Medula {
 				logger.warn("delete mapdb files");
 				Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/heart.mapdb*");
 				copyLogFiles(faultDate);
-				//ArrayList results = Utils.executeCommand("sudo reboot");
-				logger.warn("restarting heart process");
+				 results = Utils.executeCommand("sudo reboot");
+				//logger.warn("restarting heart process");
 
-				 results = Utils.executeCommand("sudo sh /home/pi/Teleonome/heart/StartHeartBG.sh");
+				// results = Utils.executeCommand("sudo sh /home/pi/Teleonome/heart/StartHeartBG.sh");
 				 data = "restarted the heart command response="  +String.join(", ", results);
 				logger.warn("after restarting heart while still in medule data=" + data);
 			}
@@ -379,9 +379,9 @@ public class Medula {
 					}
 					logger.info("Medula is about t restart the hypothalamus ...");
 					copyLogFiles(faultDate);
-					//Process p = Runtime.getRuntime().exec("sudo reboot");
-					 results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartHypothalamusBG.sh");
-					//System.exit(0);
+					Process p = Runtime.getRuntime().exec("sudo reboot");
+					// results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartHypothalamusBG.sh");
+					System.exit(0);
 					data = "StartHypothalamusBG command response="  +String.join(", ", results);
 					logger.warn("after restarting hypothalamus and while still in medule data=" + data);
 
