@@ -702,8 +702,8 @@ public class Medula {
 		// takes a long time to complete a pulse cycle.  For example a teleonome that is processing analyticons
 		// or mnemosycons might take 20 minutes to complete the pulse and wait one minute before starting again
 		
-		//boolean late=(numberOfPulsesBeforeIsLate*(currentPulseFrequency  + currentPulseGenerationDuration))< timeSinceLastPulse;
-		boolean late=(numberOfPulsesBeforeIsLate*currentPulseFrequency )< timeSinceLastPulse;
+		boolean late=(numberOfPulsesBeforeIsLate*(currentPulseFrequency  + currentPulseGenerationDuration))< timeSinceLastPulse;
+		//boolean late=(numberOfPulsesBeforeIsLate*currentPulseFrequency )< timeSinceLastPulse;
 		logger.info("late=" + late + " timeSinceLastPulse=" + timeSinceLastPulse + " currentPulseGenerationDuration=" + currentPulseGenerationDuration + " currentPulseFrequency=" + currentPulseFrequency + " numberOfPulsesBeforeIsLate=" + numberOfPulsesBeforeIsLate);
 
 
