@@ -217,21 +217,21 @@ public class Medula {
 			FileFilter fileFilter = new WildcardFileFilter("*.hprof");
 			File[] files = dir.listFiles(fileFilter);
 			if(files.length>0) {
-				//
-				// remove previous hprog
-				//
-				Arrays.stream(dir.listFiles((f, p) -> p.endsWith("hprog"))).forEach(File::delete);    
-
+//				//
+//				// remove previous hprog
+//				//
+//				Arrays.stream(dir.listFiles((f, p) -> p.endsWith("hprog"))).forEach(File::delete);    
+//
 				StringBuffer data1=new StringBuffer();;
-				logger.info("foound hprof file, renaming them to hprog" );
-				File destFile;
+//				logger.info("foound hprof file, renaming them to hprog" );
+//				File destFile;
 				for(int i=0;i<files.length;i++) {
-					destFile = new File ("/home/pi/Teleonome/"+ FilenameUtils.getBaseName(files[i].getAbsolutePath()) + ".hprog");
-					if(i>0) {
-						data1.append(",");
-					}
-					data1.append(files[i].getAbsolutePath() + ".hprog");
-					FileUtils.moveFile(files[i],destFile);
+//					destFile = new File ("/home/pi/Teleonome/"+ FilenameUtils.getBaseName(files[i].getAbsolutePath()) + ".hprog");
+//					if(i>0) {
+//						data1.append(",");
+//					}
+					data1.append(files[i].getAbsolutePath() );
+//					FileUtils.moveFile(files[i],destFile);
 				}
 
 				//
@@ -408,18 +408,24 @@ public class Medula {
 			// if we are late, check to see if the pacemaker is running, 
 			// get the processid
 			try {
-				long lastTomcatPingMillis = Long.parseLong(FileUtils.readFileToString(new File("WebServerPing.info")));
-				long now = System.currentTimeMillis();
+				String webserverPingInfoS = FileUtils.readFileToString(new File("WebServerPing.info"));
+				if(webserverPingInfoS!=null) {
+					JSONObject webserverPingInfo = new JSONObject(webserverPingInfoS);
+					long lastTomcatPingMillis = webserverPingInfo.getLong(TeleonomeConstants.DATATYPE_TIMESTAMP_MILLISECONDS);
+					long now = System.currentTimeMillis();
 
-				if(now>(lastTomcatPingMillis*60*3)){
-					logger.info("tomcat ping late, now=" + now + " lastTomcatPingMillis=" + lastTomcatPingMillis);
-					addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_TOMCAT_PING_LATE,"Last Tomcat Ping at at " + simpleFormatter.format(new Timestamp(lastTomcatPingMillis)));
-					copyLogFiles(faultDate);
-					//ArrayList results = Utils.executeCommand("File");
-					//String data = "Reboot command response="  +String.join(", ", results);
-					//logger.warn("Medula is rebooting from tomcat problem, reboot data=" + data);
-
+					if(now>(lastTomcatPingMillis*60*3)){
+						logger.info("tomcat ping late, now=" + now + " lastTomcatPingMillis=" + lastTomcatPingMillis);
+						addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_TOMCAT_PING_LATE,"Last Tomcat Ping at at " + simpleFormatter.format(new Timestamp(lastTomcatPingMillis)));
+						copyLogFiles(faultDate);
+						//ArrayList results = Utils.executeCommand("File");
+						//String data = "Reboot command response="  +String.join(", ", results);
+						//logger.warn("Medula is rebooting from tomcat problem, reboot data=" + data);
+	
+					}
 				}
+						
+				
 
 			} catch (IOException e1) {
 				// TODO Auto-generated catch block
