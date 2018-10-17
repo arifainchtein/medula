@@ -217,23 +217,18 @@ public class Medula {
 			FileFilter fileFilter = new WildcardFileFilter("*.hprof");
 			File[] files = dir.listFiles(fileFilter);
 			if(files.length>0) {
-//				//
-//				// remove previous hprog
-//				//
-//				Arrays.stream(dir.listFiles((f, p) -> p.endsWith("hprog"))).forEach(File::delete);    
-//
 				StringBuffer data1=new StringBuffer();;
 //				logger.info("foound hprof file, renaming them to hprog" );
 //				File destFile;
 				for(int i=0;i<files.length;i++) {
-//					destFile = new File ("/home/pi/Teleonome/"+ FilenameUtils.getBaseName(files[i].getAbsolutePath()) + ".hprog");
-//					if(i>0) {
-//						data1.append(",");
-//					}
 					data1.append(files[i].getAbsolutePath() );
-//					FileUtils.moveFile(files[i],destFile);
 				}
 
+				//
+//				// remove 
+//				//
+				Arrays.stream(dir.listFiles((f, p) -> p.endsWith("hprof"))).forEach(File::delete);
+				
 				//
 				// add a pathology dene to the pulse
 				//
