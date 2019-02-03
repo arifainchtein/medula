@@ -69,7 +69,7 @@ public class Medula {
 	public void monitor() {
 
 		String denomeFileInString = null;
-		JSONObject denomeJSONObject;
+		JSONObject denomeJSONObject=null;
 		Calendar cal = Calendar.getInstance();//TimeZone.getTimeZone("GMT+10:00"));
 		Date faultDate = cal.getTime();
 
@@ -105,9 +105,6 @@ public class Medula {
 				FileUtils.copyFile(new File(Utils.getLocalDirectory() + "Teleonome.previous_pulse"), new File(Utils.getLocalDirectory() + "Teleonome.denome"));
 				addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_CORRUPT_PULSE_FILE,"");
 			}
-
-			denomeFileInString = FileUtils.readFileToString(new File(Utils.getLocalDirectory() + "Teleonome.denome"));
-			denomeJSONObject = new JSONObject(denomeFileInString);
 			logger.info("denome JSObject was created ok" );
 
 		} catch (IOException e) {
@@ -131,20 +128,21 @@ public class Medula {
 		
 		// first check to see if the heart has received a pulse lately, read file heart/HeartTeleonome.denome
 		// 
+		String heartDenomeFileInString="";
 		try {
-			denomeFileInString = FileUtils.readFileToString(new File(Utils.getLocalDirectory() + "heart/HeartTeleonome.denome"));
+			heartDenomeFileInString = FileUtils.readFileToString(new File(Utils.getLocalDirectory() + "heart/HeartTeleonome.denome"));
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			logger.warn(Utils.getStringException(e));
 		}
-		denomeJSONObject = new JSONObject(denomeFileInString);
+		JSONObject heartDenomeJSONObject = new JSONObject(heartDenomeFileInString);
 		boolean late;
-		String heartLastPulseDate = denomeJSONObject.getString(TeleonomeConstants.PULSE_TIMESTAMP);
+		String heartLastPulseDate = heartDenomeJSONObject.getString(TeleonomeConstants.PULSE_TIMESTAMP);
 
 
 
 		try {
-			late= isPulseLate( denomeJSONObject);
+			late= isPulseLate( heartDenomeJSONObject);
 			if(late ){
 				logger.info("the heart  is late, seconds since currentPulseFrequency=" + currentPulseFrequency + " numberOfPulsesBeforeIsLate=" + numberOfPulsesBeforeIsLate + " last pulse=" + timeSinceLastPulse/1000 + " maximum number of seconds =" + (numberOfPulsesBeforeIsLate*currentPulseFrequency)/1000);
 				//
