@@ -595,19 +595,19 @@ public class Medula {
 				logger.warn(Utils.getStringException(e));
 			}
 		}
-		if(srcFile.isFile()) {
-			logger.debug("copying file" + srcFile.getAbsolutePath() + " to " + destFile.getAbsolutePath());;
-			srcFile = new File(srcFolderName + "ArduinoUno.txt");
-			destFile =  new File(destFolderName + "ArduinoUno.txt");
-			destFileWeb =  new File(destFolderWebRootName + "ArduinoUno.txt");
-			try {
-				FileUtils.copyFile(srcFile, destFile);
-				FileUtils.copyFile(srcFile, destFileWeb);
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				logger.warn(Utils.getStringException(e));
-			}
-		}
+//		if(srcFile.isFile()) {
+//			logger.debug("copying file" + srcFile.getAbsolutePath() + " to " + destFile.getAbsolutePath());;
+//			srcFile = new File(srcFolderName + "ArduinoUno.txt");
+//			destFile =  new File(destFolderName + "ArduinoUno.txt");
+//			destFileWeb =  new File(destFolderWebRootName + "ArduinoUno.txt");
+//			try {
+//				FileUtils.copyFile(srcFile, destFile);
+//				FileUtils.copyFile(srcFile, destFileWeb);
+//			} catch (IOException e) {
+//				// TODO Auto-generated catch block
+//				logger.warn(Utils.getStringException(e));
+//			}
+//		}
 		if(srcFile.isFile()) {
 			logger.debug("copying file" + srcFile.getAbsolutePath() + " to " + destFile.getAbsolutePath());;
 			srcFile = new File(srcFolderName + "gc.log");
