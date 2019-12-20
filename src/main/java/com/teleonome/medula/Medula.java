@@ -5,6 +5,7 @@ package com.teleonome.medula;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.sql.Timestamp;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
@@ -31,6 +32,8 @@ import com.teleonome.framework.denome.DenomeUtils;
 import com.teleonome.framework.denome.Identity;
 import com.teleonome.framework.exception.InvalidDenomeException;
 import com.teleonome.framework.utils.Utils;
+
+import javolution.text.CharSet;
 
 public class Medula {
 	//public final static String BUILD_NUMBER="17";
@@ -72,17 +75,23 @@ public class Medula {
 		JSONObject denomeJSONObject=null;
 		Calendar cal = Calendar.getInstance();//TimeZone.getTimeZone("GMT+10:00"));
 		Date faultDate = cal.getTime();
-
+		boolean recreatedDenomeFile=false;
 		try {
-			denomeFileInString = FileUtils.readFileToString(new File(Utils.getLocalDirectory() + "Teleonome.denome"));
+			File denomeFile = new File(Utils.getLocalDirectory() + "Teleonome.denome");
+			if(!denomeFile.isFile()) {
+				logger.info("Teleonome.denome was not found, copying from previous_pulse" );
+				FileUtils.copyFile(new File(Utils.getLocalDirectory() + "Teleonome.previous_pulse"), new File(Utils.getLocalDirectory() + "Teleonome.denome"));
+				addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_MISSING_DENOME_FILE,"");
+				denomeFile = new File(Utils.getLocalDirectory() + "Teleonome.denome");
+				recreatedDenomeFile=true;
+			}
+			denomeFileInString = FileUtils.readFileToString(denomeFile, Charset.defaultCharset());
 			boolean validJSONFormat=true;
 			logger.info("checking the Teleonome.denome first, length=" + denomeFileInString.length() );
 			
-
 			if(denomeFileInString.length()==0){
 				validJSONFormat=false;
 				logger.info("Teleonome.denome has zero length" );
-
 			}else {
 				//
 				// now try to create a jsonobject, if you get an exception cop \y the backup
@@ -90,6 +99,27 @@ public class Medula {
 				try{
 					denomeJSONObject = new JSONObject(denomeFileInString);
 					logger.info("Teleonome.denome denome is valid json, "  );
+					if(recreatedDenomeFile) {
+						//
+						// the denome file was not there and it was copied so restart the hypothalamus
+						//
+						try {
+							Utils.executeCommand("sudo kill -9  " + hypothalamusPid);
+							logger.warn("killing teleonomehypothalamus process");
+							
+							copyLogFiles(faultDate);
+							ArrayList<String> results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartHypothalamusBG.sh");
+							String data =  " Restarted Hypothalamus " + new Date() + String.join(", ", results);
+							logger.warn("restarting TeleonomeHypothalamus process command execution result:" + data);
+						} catch (InterruptedException e) {
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+						
+
+						
+						
+					}
 				}catch (JSONException e) {
 					//
 					// if we are here is
