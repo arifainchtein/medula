@@ -387,6 +387,8 @@ public class Medula {
 					//1872 pts/0    00:02:45 java
 					//if it only returns one line then the process is not running
 					String data = "Last Pulse at \r" + lastPulseDate + String.join(", ", results);
+					logger.info("here is data:" +data);
+					
 					if(results.size()<2){
 						logger.info("pacemaker is not running");
 						addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HYPOTHALAMUS_DIED,data);
@@ -400,7 +402,7 @@ public class Medula {
 						//
 						addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_PULSE_LATE,data);
 					}
-					logger.info("Medula is about t restart the hypothalamus ...");
+					logger.info("Medula is about to restart ...");
 					copyLogFiles(faultDate);
 					Process p = Runtime.getRuntime().exec("sudo reboot");
 					// results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartHypothalamusBG.sh");
@@ -625,19 +627,36 @@ public class Medula {
 				logger.warn(Utils.getStringException(e));
 			}
 		}
-//		if(srcFile.isFile()) {
-//			logger.debug("copying file" + srcFile.getAbsolutePath() + " to " + destFile.getAbsolutePath());;
-//			srcFile = new File(srcFolderName + "ArduinoUno.txt");
-//			destFile =  new File(destFolderName + "ArduinoUno.txt");
-//			destFileWeb =  new File(destFolderWebRootName + "ArduinoUno.txt");
-//			try {
-//				FileUtils.copyFile(srcFile, destFile);
-//				FileUtils.copyFile(srcFile, destFileWeb);
-//			} catch (IOException e) {
-//				// TODO Auto-generated catch block
-//				logger.warn(Utils.getStringException(e));
-//			}
-//		}
+		srcFile = new File(srcFolderName + "AsyncCycle.txt");
+		destFile =  new File(destFolderName + "AsyncCycle.txt");
+		destFileWeb =  new File(destFolderWebRootName + "AsyncCycle.txt");
+		
+		if(srcFile.isFile()) {
+			logger.debug("copying file" + srcFile.getAbsolutePath() + " to " + destFile.getAbsolutePath());;
+			try {
+				FileUtils.copyFile(srcFile, destFile);
+				FileUtils.copyFile(srcFile, destFileWeb);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				logger.warn(Utils.getStringException(e));
+			}
+		}
+		
+		srcFile = new File(srcFolderName + "SFTPPublisherWriter.txt");
+		destFile =  new File(destFolderName + "SFTPPublisherWriter.txt");
+		destFileWeb =  new File(destFolderWebRootName + "SFTPPublisherWriter.txt");
+		
+		if(srcFile.isFile()) {
+			logger.debug("copying file" + srcFile.getAbsolutePath() + " to " + destFile.getAbsolutePath());;
+			try {
+				FileUtils.copyFile(srcFile, destFile);
+				FileUtils.copyFile(srcFile, destFileWeb);
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				logger.warn(Utils.getStringException(e));
+			}
+		}
+		
 		if(srcFile.isFile()) {
 			logger.debug("copying file" + srcFile.getAbsolutePath() + " to " + destFile.getAbsolutePath());;
 			srcFile = new File(srcFolderName + "gc.log");
