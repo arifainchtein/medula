@@ -75,7 +75,7 @@ public class Medula {
 		JSONObject denomeJSONObject=null;
 		Calendar cal = Calendar.getInstance();//TimeZone.getTimeZone("GMT+10:00"));
 		Date faultDate = cal.getTime();
-		boolean recreatedDenomeFile=false;
+		
 		try {
 			File denomeFile = new File(Utils.getLocalDirectory() + "Teleonome.denome");
 			if(!denomeFile.isFile()) {
@@ -83,59 +83,84 @@ public class Medula {
 				FileUtils.copyFile(new File(Utils.getLocalDirectory() + "Teleonome.previous_pulse"), new File(Utils.getLocalDirectory() + "Teleonome.denome"));
 				addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_MISSING_DENOME_FILE,"");
 				denomeFile = new File(Utils.getLocalDirectory() + "Teleonome.denome");
-				recreatedDenomeFile=true;
+				
 			}
 			denomeFileInString = FileUtils.readFileToString(denomeFile, Charset.defaultCharset());
 			boolean validJSONFormat=true;
 			logger.info("checking the Teleonome.denome first, length=" + denomeFileInString.length() );
-			
-			if(denomeFileInString.length()==0){
+			boolean restartHypothalamus=false;
+			try{
+				denomeJSONObject = new JSONObject(denomeFileInString);
+			}catch (JSONException e) {
+				//
+				// if we are here is
+				logger.info("Teleonome_.denome is not valid" );
+				logger.warn(Utils.getStringException(e));
 				validJSONFormat=false;
-				logger.info("Teleonome.denome has zero length" );
-			}else {
-				//
-				// now try to create a jsonobject, if you get an exception cop \y the backup
-				//
-				try{
-					denomeJSONObject = new JSONObject(denomeFileInString);
-					logger.info("Teleonome.denome denome is valid json, "  );
-					if(recreatedDenomeFile) {
+			}
+			
+			if(!validJSONFormat){
+				addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_CORRUPT_PULSE_FILE,"");
+				
+				File previousPulseFile = new File(Utils.getLocalDirectory() + "Teleonome.previous_pulse");
+				logger.info("Teleonome.denome has zero length, checking previous pulse" );
+				String previousPulseDenomeFileInString = FileUtils.readFileToString(previousPulseFile, Charset.defaultCharset());
+				if(previousPulseDenomeFileInString.length()>0){
+					try{
+						JSONObject previousDenomeJSONObject = new JSONObject(previousPulseDenomeFileInString);
+						FileUtils.deleteQuietly(new File(Utils.getLocalDirectory() + "Teleonome.denome"));
+						FileUtils.copyFile(previousPulseFile, new File(Utils.getLocalDirectory() + "Teleonome.denome"));
+						logger.info("Teleonome.previous_pulse denome is valid json, copying to Teleonome.denome "  );
+						validJSONFormat=true;
+						restartHypothalamus=true;
+					}catch (JSONException e) {
 						//
-						// the denome file was not there and it was copied so restart the hypothalamus
-						//
-						try {
-							Utils.executeCommand("sudo kill -9  " + hypothalamusPid);
-							logger.warn("killing teleonomehypothalamus process");
-							
-							copyLogFiles(faultDate);
-							ArrayList<String> results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartHypothalamusBG.sh");
-							String data =  " Restarted Hypothalamus " + new Date() + String.join(", ", results);
-							logger.warn("restarting TeleonomeHypothalamus process command execution result:" + data);
-						} catch (InterruptedException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
-						
-
-						
-						
+						// if we are here is
+						logger.info("Teleonome_.previous_pulse does not convert to a valid json object" );
+						logger.warn(Utils.getStringException(e));
+						validJSONFormat=false;
 					}
+				}
+			}
+				//
+			if(!validJSONFormat) {
+				// if we are here is because the previous pulse was corrupt so copy the original
+				try{
+					File originalPulseFile = new File(Utils.getLocalDirectory() + "Teleonome.original");
+					logger.info("Copying Teleonome.original to Teleonome.denome" );
+					String originalDenomeFileInString = FileUtils.readFileToString(originalPulseFile, Charset.defaultCharset());
+					JSONObject previousDenomeJSONObject = new JSONObject(originalDenomeFileInString);
+					FileUtils.deleteQuietly(new File(Utils.getLocalDirectory() + "Teleonome.denome"));
+					FileUtils.copyFile(originalPulseFile, new File(Utils.getLocalDirectory() + "Teleonome.denome"));
+					
+					logger.info("Teleonome.previous_pulse denome is not valid json, copying Teleonome.original to Teleonome.denome "  );
+					validJSONFormat=true;
+					restartHypothalamus=true;
 				}catch (JSONException e) {
 					//
 					// if we are here is
-					logger.info("Teleonome.denome does not convert to a valid json object" );
+					logger.info("Teleonome_.previous_pulse does not convert to a valid json object" );
 					logger.warn(Utils.getStringException(e));
 					validJSONFormat=false;
 				}
 			}
+			
+		if(restartHypothalamus) {
+			try {
+				Utils.executeCommand("sudo kill -9  " + hypothalamusPid);
+				logger.warn("killing teleonomehypothalamus process");
 
-			if(!validJSONFormat) {
-				logger.info("removing Teleonome.denome  and copying from previous_pulse" );
-				FileUtils.deleteQuietly(new File(Utils.getLocalDirectory() + "Teleonome.denome"));
-				FileUtils.copyFile(new File(Utils.getLocalDirectory() + "Teleonome.previous_pulse"), new File(Utils.getLocalDirectory() + "Teleonome.denome"));
-				addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_CORRUPT_PULSE_FILE,"");
+				copyLogFiles(faultDate);
+				ArrayList<String> results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartHypothalamusBG.sh");
+				String data =  " Restarted Hypothalamus " + new Date() + String.join(", ", results);
+				logger.warn("restarting TeleonomeHypothalamus process command execution result:" + data);
+			} catch (InterruptedException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
-			logger.info("denome JSObject was created ok" );
+		}
+		
+		
 
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
@@ -155,7 +180,7 @@ public class Medula {
 			e3.printStackTrace();
 		}
 		logger.info("checking the heart, heartPid=" +heartPid );
-		
+
 		// first check to see if the heart has received a pulse lately, read file heart/HeartTeleonome.denome
 		// 
 		String heartDenomeFileInString="";
@@ -187,21 +212,21 @@ public class Medula {
 				//PID TTY          TIME CMD
 				//1872 pts/0    00:02:45 java
 				//if it only returns one line then the process is not running
-//				if(results.size()<2){
-//					logger.info("heart is not running");
-//					addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HEART_DIED, "data=" + data);
-//				}else{
-//					logger.info("heart is  running but still late, killing it... data=" + data);
-//
-//					//
-//					// add a pathology dene to the pulse
-//					//
-//
-//					addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HEART_PULSE_LATE,data);
-//
-//					Utils.executeCommand("sudo kill -9  " + heartPid);
-//					Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/heart.mapdb*");
-//				}
+				//				if(results.size()<2){
+				//					logger.info("heart is not running");
+				//					addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HEART_DIED, "data=" + data);
+				//				}else{
+				//					logger.info("heart is  running but still late, killing it... data=" + data);
+				//
+				//					//
+				//					// add a pathology dene to the pulse
+				//					//
+				//
+				//					addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HEART_PULSE_LATE,data);
+				//
+				//					Utils.executeCommand("sudo kill -9  " + heartPid);
+				//					Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/heart.mapdb*");
+				//				}
 				logger.warn( "about to kill process " + heartPid);
 				results = Utils.executeCommand("sudo kill -9  " + heartPid);
 				data = "killing the heart command response="  +String.join(", ", results);
@@ -210,7 +235,7 @@ public class Medula {
 
 				results = Utils.executeCommand("sudo sh /home/pi/Teleonome/heart/StartHeartBG.sh");
 				data = "restarted the heart command response="  +String.join(", ", results);
-				
+
 				logger.warn( data);
 
 				//
@@ -223,7 +248,7 @@ public class Medula {
 					e3.printStackTrace();
 				}
 				logger.info("After restarting, heartPid=" + heartPid  );
-				
+
 			}
 
 		} catch (IOException e1) {
@@ -246,17 +271,17 @@ public class Medula {
 			File[] files = dir.listFiles(fileFilter);
 			if(files.length>0) {
 				StringBuffer data1=new StringBuffer();;
-//				logger.info("foound hprof file, renaming them to hprog" );
-//				File destFile;
+				//				logger.info("foound hprof file, renaming them to hprog" );
+				//				File destFile;
 				for(int i=0;i<files.length;i++) {
 					data1.append(files[i].getAbsolutePath() );
 				}
 
 				//
-//				// remove 
-//				//
+				//				// remove 
+				//				//
 				Arrays.stream(dir.listFiles((f, p) -> p.endsWith("hprof"))).forEach(File::delete);
-				
+
 				//
 				// add a pathology dene to the pulse
 				//
@@ -264,14 +289,14 @@ public class Medula {
 				addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HYPOTHALAMUS_DIED,data1.toString());
 				//Utils.executeCommand("sudo kill -9  " + hypothalamusPid);
 				logger.warn("killing teleonomehypothalamus process");
-				Utils.executeCommand("sudo kill -9  " + heartPid);
+				Utils.executeCommand("sudo kill -9  " + hypothalamusPid);
 				copyLogFiles(faultDate);
-				
-				
-				ArrayList results = Utils.executeCommand("sudo reboot");
-				logger.warn("restarting TeleonomeHypothalamus process");
 
-				//ArrayList results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartHypothalamusBG.sh");
+
+			//	ArrayList results = Utils.executeCommand("sudo reboot");
+				//logger.warn("restarting TeleonomeHypothalamus process");
+
+			   ArrayList results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartHypothalamusBG.sh");
 				String data = "restarted the TeleonomeHypothalamus command response="  +String.join(", ", results);
 				logger.warn("after restarting TeleonomeHypothalamus while still in medule data=" + data);
 			}
@@ -327,11 +352,11 @@ public class Medula {
 				logger.warn("delete mapdb files");
 				Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/heart.mapdb*");
 				copyLogFiles(faultDate);
-			//	 results = Utils.executeCommand("sudo reboot");
+				//	 results = Utils.executeCommand("sudo reboot");
 				logger.warn("restarting heart process");
 
-				 results = Utils.executeCommand("sudo sh /home/pi/Teleonome/heart/StartHeartBG.sh");
-				 data = "restarted the heart command response="  +String.join(", ", results);
+				results = Utils.executeCommand("sudo sh /home/pi/Teleonome/heart/StartHeartBG.sh");
+				data = "restarted the heart command response="  +String.join(", ", results);
 				logger.warn("after restarting heart while still in medule data=" + data);
 			}
 		}catch(IOException e) {
@@ -390,7 +415,7 @@ public class Medula {
 					//if it only returns one line then the process is not running
 					String data = "Last Pulse at \r" + lastPulseDate + String.join(", ", results);
 					logger.info("here is data:" +data);
-					
+
 					if(results.size()<2){
 						logger.info("pacemaker is not running");
 						addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HYPOTHALAMUS_DIED,data);
@@ -406,15 +431,15 @@ public class Medula {
 					}
 					logger.info("Medula is about to restart hypothalamus...");
 					copyLogFiles(faultDate);
-					
-					
+
+
 					//Process p = Runtime.getRuntime().exec("sudo reboot");
-					 results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartHypothalamusBG.sh");
-					
+					results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartHypothalamusBG.sh");
+
 					data = "StartHypothalamusBG command response="  +String.join(", ", results);
 					logger.warn("after restarting hypothalamus and while still in medule data=" + data);
-					
-					System.exit(0);
+
+				//	System.exit(0);
 
 				} catch (IOException e1) {
 					// TODO Auto-generated catch block
@@ -452,11 +477,11 @@ public class Medula {
 						//ArrayList results = Utils.executeCommand("File");
 						//String data = "Reboot command response="  +String.join(", ", results);
 						//logger.warn("Medula is rebooting from tomcat problem, reboot data=" + data);
-	
+
 					}
 				}
-						
-				
+
+
 
 			} catch (IOException e1) {
 				// TODO Auto-generated catch block
@@ -522,21 +547,21 @@ public class Medula {
 						copyLogFiles(faultDate);
 
 						ArrayList results;
-//						try {
-//							//results = Utils.executeCommand("sudo reboot");
-//							//String data = "Reboot command response="  +String.join(", ", results);
-//							logger.warn("after executing rebootfrom heart problem command and while still in medule data=" + data);
-//						} catch (IOException | InterruptedException e) {
-//							// TODO Auto-generated catch block
-//							logger.warn(Utils.getStringException(e));
-//						}
+						//						try {
+						//							//results = Utils.executeCommand("sudo reboot");
+						//							//String data = "Reboot command response="  +String.join(", ", results);
+						//							logger.warn("after executing rebootfrom heart problem command and while still in medule data=" + data);
+						//						} catch (IOException | InterruptedException e) {
+						//							// TODO Auto-generated catch block
+						//							logger.warn(Utils.getStringException(e));
+						//						}
 
 
 					}
 				}
 			}
 
-			
+
 
 		}catch (JSONException e) {
 			// TODO Auto-generated catch block
@@ -565,11 +590,11 @@ public class Medula {
 
 		File srcFile = new File(srcFolderName + "TeleonomeHypothalamus.txt");
 		File destFile =  new File(destFolderName + "TeleonomeHypothalamus.txt");
-		
+
 		File destFileWeb =  new File(destFolderWebRootName + "TeleonomeHypothalamus.txt");
 		if(srcFile.isFile()) {
 			logger.debug("copying file" + srcFile.getAbsolutePath() + " to " + destFile.getAbsolutePath());;
-				try {
+			try {
 				FileUtils.copyFile(srcFile, destFile);
 				FileUtils.copyFile(srcFile, destFileWeb);
 			} catch (IOException e) {
@@ -636,7 +661,7 @@ public class Medula {
 		srcFile = new File(srcFolderName + "AsyncCycle.txt");
 		destFile =  new File(destFolderName + "AsyncCycle.txt");
 		destFileWeb =  new File(destFolderWebRootName + "AsyncCycle.txt");
-		
+
 		if(srcFile.isFile()) {
 			logger.debug("copying file" + srcFile.getAbsolutePath() + " to " + destFile.getAbsolutePath());;
 			try {
@@ -647,11 +672,11 @@ public class Medula {
 				logger.warn(Utils.getStringException(e));
 			}
 		}
-		
+
 		srcFile = new File(srcFolderName + "SFTPPublisherWriter.txt");
 		destFile =  new File(destFolderName + "SFTPPublisherWriter.txt");
 		destFileWeb =  new File(destFolderWebRootName + "SFTPPublisherWriter.txt");
-		
+
 		if(srcFile.isFile()) {
 			logger.debug("copying file" + srcFile.getAbsolutePath() + " to " + destFile.getAbsolutePath());;
 			try {
@@ -662,7 +687,7 @@ public class Medula {
 				logger.warn(Utils.getStringException(e));
 			}
 		}
-		
+
 		if(srcFile.isFile()) {
 			logger.debug("copying file" + srcFile.getAbsolutePath() + " to " + destFile.getAbsolutePath());;
 			srcFile = new File(srcFolderName + "gc.log");
@@ -742,7 +767,7 @@ public class Medula {
 
 		identity = new Identity(tN, TeleonomeConstants.NUCLEI_PURPOSE, TeleonomeConstants.DENECHAIN_OPERATIONAL_DATA, TeleonomeConstants.DENE_VITAL, TeleonomeConstants.DENEWORD_TYPE_CURRENT_PULSE_GENERATION_DURATION);
 		currentPulseGenerationDuration = (Integer)DenomeUtils.getDeneWordByIdentity(denomeJSONObject, identity, TeleonomeConstants.DENEWORD_VALUE_ATTRIBUTE);
-		
+
 		long now = System.currentTimeMillis();
 		timeSinceLastPulse =  now - lastPulseMillis;
 
@@ -755,7 +780,7 @@ public class Medula {
 		//currentPulseFrequency < currentPulseGenerationDuration in this case we are in a teleonome that 
 		// takes a long time to complete a pulse cycle.  For example a teleonome that is processing analyticons
 		// or mnemosycons might take 20 minutes to complete the pulse and wait one minute before starting again
-		
+
 		boolean late=(numberOfPulsesBeforeIsLate*(currentPulseFrequency  + currentPulseGenerationDuration))< timeSinceLastPulse;
 		//boolean late=(numberOfPulsesBeforeIsLate*currentPulseFrequency )< timeSinceLastPulse;
 		logger.info("late=" + late + " timeSinceLastPulse=" + timeSinceLastPulse + " currentPulseGenerationDuration=" + currentPulseGenerationDuration + " currentPulseFrequency=" + currentPulseFrequency + " numberOfPulsesBeforeIsLate=" + numberOfPulsesBeforeIsLate);
