@@ -266,6 +266,8 @@ public class Medula {
 				logger.warn("killing teleonomehypothalamus process");
 				Utils.executeCommand("sudo kill -9  " + heartPid);
 				copyLogFiles(faultDate);
+				
+				
 				ArrayList results = Utils.executeCommand("sudo reboot");
 				logger.warn("restarting TeleonomeHypothalamus process");
 
@@ -325,10 +327,10 @@ public class Medula {
 				logger.warn("delete mapdb files");
 				Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/heart.mapdb*");
 				copyLogFiles(faultDate);
-				 results = Utils.executeCommand("sudo reboot");
-				//logger.warn("restarting heart process");
+			//	 results = Utils.executeCommand("sudo reboot");
+				logger.warn("restarting heart process");
 
-				// results = Utils.executeCommand("sudo sh /home/pi/Teleonome/heart/StartHeartBG.sh");
+				 results = Utils.executeCommand("sudo sh /home/pi/Teleonome/heart/StartHeartBG.sh");
 				 data = "restarted the heart command response="  +String.join(", ", results);
 				logger.warn("after restarting heart while still in medule data=" + data);
 			}
@@ -402,13 +404,17 @@ public class Medula {
 						//
 						addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_PULSE_LATE,data);
 					}
-					logger.info("Medula is about to restart ...");
+					logger.info("Medula is about to restart hypothalamus...");
 					copyLogFiles(faultDate);
-					Process p = Runtime.getRuntime().exec("sudo reboot");
-					// results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartHypothalamusBG.sh");
-					System.exit(0);
+					
+					
+					//Process p = Runtime.getRuntime().exec("sudo reboot");
+					 results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartHypothalamusBG.sh");
+					
 					data = "StartHypothalamusBG command response="  +String.join(", ", results);
 					logger.warn("after restarting hypothalamus and while still in medule data=" + data);
+					
+					System.exit(0);
 
 				} catch (IOException e1) {
 					// TODO Auto-generated catch block
