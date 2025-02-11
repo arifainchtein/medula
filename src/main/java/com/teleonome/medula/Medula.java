@@ -492,6 +492,7 @@ public class Medula {
 			// check the size of the heartdb
 			File file = new File(Utils.getLocalDirectory() + "heart" + File.separator +  "heart.mapdb.p");
 			int heartDBOriginalSize = (int)file.length()/(1024*1024);
+			logger.debug("heartDB size=" + heartDBOriginalSize + " maximum=" +MAXIMUM_HEART_DB_SIZE/(1024*1024) );
 			if( file.length() > MAXIMUM_HEART_DB_SIZE) {
 				//
 				// the database is getting big, kill ht heart erase the db and start again
