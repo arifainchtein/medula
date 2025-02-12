@@ -274,7 +274,7 @@ public class Medula {
 					copyLogFiles(faultDate);
 				}
 				
-				FileUtils.deleteQuietly();
+				FileUtils.deleteQuietly(heartProcessInfo);
 				
 				logger.info(" about to restart the heart"  );
 				results = Utils.executeCommand("sudo sh /home/pi/Teleonome/heart/StartHeartBG.sh");
