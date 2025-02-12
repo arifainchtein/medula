@@ -260,11 +260,6 @@ public class Medula {
 					addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HEART_DIED, "data=" + data);
 				}else{
 					logger.info("heart is  running but still late, killing it... data=" + data);
-
-					//
-					// add a pathology dene to the pulse
-					//
-
 					addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HEART_PULSE_LATE,data);
 					logger.warn( "heart is running about to kill process " + heartPid);
 					Utils.executeCommand("sudo kill -9  " + heartPid);
@@ -281,11 +276,13 @@ public class Medula {
 				data = "restarted the heart command response="  +String.join(", ", results);
 
 				logger.warn( data);
-				Thread.sleep(2000);
+				Thread.sleep(5000);
 				//
 				// now check the heart status
 				//
 				heartPid=-1;
+				heartProcessInfo=new File("/home/pi/Teleonome/heart/HeartProcess.info");
+				logger.info("After restarting, HeartProcess.info is a file=" + heartProcessInfo.isFile()  );
 				try {
 					heartPid = Integer.parseInt(FileUtils.readFileToString(heartProcessInfo).split("@")[0]);
 					logger.info("After restarting, heartPid=" + heartPid  );
