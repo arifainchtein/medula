@@ -214,8 +214,10 @@ public class Medula {
 		//
 		// now check the heart status
 		//
+		File heartProcessInfo=new File("/home/pi/Teleonome/heart/HeartProcess.info");
+		
 		try {
-			heartPid = Integer.parseInt(FileUtils.readFileToString(new File("/home/pi/Teleonome/heart/HeartProcess.info")).split("@")[0]);
+			heartPid = Integer.parseInt(FileUtils.readFileToString(heartProcessInfo).split("@")[0]);
 		} catch (NumberFormatException | IOException e3) {
 			// TODO Auto-generated catch block
 			e3.printStackTrace();
@@ -272,6 +274,8 @@ public class Medula {
 					copyLogFiles(faultDate);
 				}
 				
+				FileUtils.deleteQuietly();
+				
 				logger.info(" about to restart the heart"  );
 				results = Utils.executeCommand("sudo sh /home/pi/Teleonome/heart/StartHeartBG.sh");
 				data = "restarted the heart command response="  +String.join(", ", results);
@@ -281,8 +285,9 @@ public class Medula {
 				//
 				// now check the heart status
 				//
+				
 				try {
-					heartPid = Integer.parseInt(FileUtils.readFileToString(new File("/home/pi/Teleonome/heart/HeartProcess.info")).split("@")[0]);
+					heartPid = Integer.parseInt(FileUtils.readFileToString(heartProcessInfo).split("@")[0]);
 				} catch (NumberFormatException | IOException e3) {
 					// TODO Auto-generated catch block
 					e3.printStackTrace();
