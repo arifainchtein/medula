@@ -80,9 +80,9 @@ public class Medula {
 
 			try {
 				hypothalamusPid = Integer.parseInt(FileUtils.readFileToString(new File("PaceMakerProcess.info")).split("@")[0]);
-			} catch (NumberFormatException | IOException e3) {
+			} catch (NumberFormatException | IOException e) {
 				// TODO Auto-generated catch block
-				e3.printStackTrace();
+				logger.warn(Utils.getStringException(e));
 			}
 
 			File denomeFile = new File(Utils.getLocalDirectory() + "Teleonome.denome");
@@ -218,9 +218,9 @@ public class Medula {
 		
 		try {
 			heartPid = Integer.parseInt(FileUtils.readFileToString(heartProcessInfo).split("@")[0]);
-		} catch (NumberFormatException | IOException e3) {
+		} catch (NumberFormatException | IOException e) {
 			// TODO Auto-generated catch block
-			e3.printStackTrace();
+			logger.warn(Utils.getStringException(e));
 		}
 		logger.info("checking the heart, heartPid=" +heartPid );
 
@@ -285,14 +285,15 @@ public class Medula {
 				//
 				// now check the heart status
 				//
-				
+				heartPid=-1;
 				try {
 					heartPid = Integer.parseInt(FileUtils.readFileToString(heartProcessInfo).split("@")[0]);
+					logger.info("After restarting, heartPid=" + heartPid  );
 				} catch (NumberFormatException | IOException e3) {
 					// TODO Auto-generated catch block
-					e3.printStackTrace();
+					logger.warn(Utils.getStringException(e3));
 				}
-				logger.info("After restarting, heartPid=" + heartPid  );
+				
 
 			}
 
@@ -425,16 +426,16 @@ public class Medula {
 
 		try {
 			FileUtils.writeStringToFile(new File("Medula.info"), buildNumber);
-		} catch (IOException e1) {
+		} catch (IOException e) {
 			// TODO Auto-generated catch block
-			e1.printStackTrace();
+			logger.warn(Utils.getStringException(e));
 		}
 
 
 		//
 		// now check the tomcat ping
 		//
-
+		logger.warn("About to check tomcat");
 		//
 		// if we are late, check to see if the pacemaker is running, 
 		// get the processid
@@ -458,9 +459,9 @@ public class Medula {
 
 
 
-		} catch (IOException e1) {
+		} catch (IOException e) {
 			// TODO Auto-generated catch block
-			e1.printStackTrace();
+			logger.warn(Utils.getStringException(e));
 		} catch (InvalidDenomeException e) {
 			// TODO Auto-generated catch block
 			logger.warn(Utils.getStringException(e));
@@ -812,9 +813,9 @@ public class Medula {
 			try {
 				pathologyDenes = selectedPathologyDeneChain.getJSONArray("Denes");
 
-			} catch (JSONException e2) {
+			} catch (JSONException e) {
 				// TODO Auto-generated catch block
-				e2.printStackTrace();
+				logger.warn(Utils.getStringException(e));
 			}
 
 			//
