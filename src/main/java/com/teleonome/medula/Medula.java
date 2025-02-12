@@ -248,37 +248,36 @@ public class Medula {
 				ArrayList results = Utils.executeCommand("ps -p " + heartPid);
 				String data =  " Heart Last Pulse at " + heartLastPulseDate + String.join(", ", results);
 
-				//
-				// if the pacemaker is running it will return two lines like:
-				//PID TTY          TIME CMD
-				//1872 pts/0    00:02:45 java
-				//if it only returns one line then the process is not running
-				//				if(results.size()<2){
-				//					logger.info("heart is not running");
-				//					addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HEART_DIED, "data=" + data);
-				//				}else{
-				//					logger.info("heart is  running but still late, killing it... data=" + data);
-				//
-				//					//
-				//					// add a pathology dene to the pulse
-				//					//
-				//
-				//					addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HEART_PULSE_LATE,data);
-				//
-				//					Utils.executeCommand("sudo kill -9  " + heartPid);
-				//					Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/heart.mapdb*");
-				//				}
-				logger.warn( "about to kill process " + heartPid);
-				results = Utils.executeCommand("sudo kill -9  " + heartPid);
-				data = "killing the heart command response="  +String.join(", ", results);
-				logger.warn( data);
-				copyLogFiles(faultDate);
 
+				//				 if the heart is running it will return two lines like:
+				//				PID TTY          TIME CMD
+				//				1872 pts/0    00:02:45 java
+				//				if it only returns one line then the process is not running
+				if(results.size()<2){
+					logger.info("heart is not running");
+					addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HEART_DIED, "data=" + data);
+				}else{
+					logger.info("heart is  running but still late, killing it... data=" + data);
+
+					//
+					// add a pathology dene to the pulse
+					//
+
+					addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HEART_PULSE_LATE,data);
+					logger.warn( "heart is running about to kill process " + heartPid);
+					Utils.executeCommand("sudo kill -9  " + heartPid);
+					Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/heart.mapdb*");
+					data = "killing the heart command response="  +String.join(", ", results);
+					logger.warn( data);
+					copyLogFiles(faultDate);
+				}
+				
+				logger.info(" about to restart the heart"  );
 				results = Utils.executeCommand("sudo sh /home/pi/Teleonome/heart/StartHeartBG.sh");
 				data = "restarted the heart command response="  +String.join(", ", results);
 
 				logger.warn( data);
-
+				Thread.sleep(2000);
 				//
 				// now check the heart status
 				//
