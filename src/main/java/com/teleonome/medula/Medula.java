@@ -192,6 +192,11 @@ public class Medula {
 					logger.warn("killing teleonomehypothalamus process");
 
 					copyLogFiles(faultDate);
+					try {
+						Thread.sleep(5000);
+					}catch(InterruptedException e) {
+						logger.debug("line 195 sleep interrupted");
+					}
 					ArrayList<String> results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartHypothalamusBG.sh");
 					String data =  " Restarted Hypothalamus " + new Date() + String.join(", ", results);
 					logger.warn("restarting TeleonomeHypothalamus process command execution result:" + data);
@@ -270,7 +275,11 @@ public class Medula {
 				}
 				
 				FileUtils.deleteQuietly(heartProcessInfo);
-				
+				try {
+					Thread.sleep(5000);
+				}catch(InterruptedException e) {
+					logger.debug("line 277 sleep interrupted");
+				}
 				logger.info(" about to restart the heart"  );
 				results = Utils.executeCommand("sudo sh /home/pi/Teleonome/heart/StartHeartBG.sh");
 				data = "restarted the heart command response="  +String.join(", ", results);
@@ -397,9 +406,15 @@ public class Medula {
 				copyLogFiles(faultDate);
 				//	 results = Utils.executeCommand("sudo reboot");
 				logger.warn("restarting heart process");
-
+				
 				results = Utils.executeCommand("sudo sh /home/pi/Teleonome/heart/StartHeartBG.sh");
+				try {
+					Thread.sleep(5000);
+				}catch(InterruptedException e) {
+					logger.debug("line 412 sleep interrupted");
+				}
 				data = "restarted the heart command response="  +String.join(", ", results);
+				
 				logger.warn("after restarting heart while still in medule data=" + data);
 			}
 		}catch(IOException e) {
