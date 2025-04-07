@@ -5,6 +5,9 @@ package com.teleonome.medula;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.ProtocolException;
+import java.net.URL;
 import java.nio.charset.Charset;
 import java.sql.Timestamp;
 import java.text.DecimalFormat;
@@ -112,7 +115,7 @@ public class Medula {
 			boolean restartHypothalamus=false;
 			try{
 				denomeJSONObject = new JSONObject(denomeFileInString);
-
+				String teleonomeName = denomeJSONObject.getString("Name");
 				//
 				// ok the teleonome is a valid file, now check if its late
 				//
@@ -461,6 +464,58 @@ public class Medula {
 		// now check the tomcat ping
 		//
 		logger.warn("About to check tomcat");
+		//
+		// check the site
+		 boolean webappok=false;
+         try {
+        	 String website = "http://"+teleonomeName+".local"; 
+    		 URL url = new URL(website);
+             HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+			connection.setRequestMethod("GET");
+			  connection.setConnectTimeout(5000); // Set timeout to 5 seconds  
+		         connection.connect();
+		         int responseCode = connection.getResponseCode();
+		         if (responseCode == 200) webappok=true;
+		} catch (ProtocolException e) {
+			// TODO Auto-generated catch block
+			logger.warn(Utils.getStringException(e));
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			logger.warn(Utils.getStringException(e));
+		}
+       int webAppPid=-1;
+        if(!webappok) {
+        	File webAppProcessInfo=new File("/home/pi/Teleonome/WebServerProcess.info");
+        	logger.info("webapp is not responsing killing it... " );
+        	try {
+    			webAppPid = Integer.parseInt(FileUtils.readFileToString(webAppProcessInfo).split("@")[0]);
+    		} catch (NumberFormatException | IOException e) {
+    			// TODO Auto-generated catch block
+    			logger.warn(Utils.getStringException(e));
+    		}
+        	addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_TOMCAT_PING_LATE,"Last Tomcat Ping at at " + simpleFormatter.format(new Timestamp(lastTomcatPingMillis)));
+			
+			logger.warn( "webapp  is not running about to kill process " + webAppPid);
+			Utils.executeCommand("sudo kill -9  " + webAppPid);
+			try {
+				Thread.sleep(5000);
+			}catch(InterruptedException e) {
+				logger.warn(Utils.getStringException(e));
+			}
+			logger.warn( "restarting webapp ");
+			ArrayList results = Utils.executeCommand("sudo sh /home/pi/Teleonome/heart/StartHeartBG.sh");
+			try {
+				Thread.sleep(10000);
+			}catch(InterruptedException e) {
+				logger.warn(Utils.getStringException(e));
+			}
+			String data = "restarted the webapp command response="  +String.join(", ", results);
+			logger.warn( data);
+    	
+        }
+         
+       
+         
 		//
 		// if we are late, check to see if the pacemaker is running, 
 		// get the processid
