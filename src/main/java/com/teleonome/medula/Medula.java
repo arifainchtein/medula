@@ -472,6 +472,7 @@ public class Medula {
 		 boolean webappok=false;
          try {
         	 String website = "http://"+teleonomeName+".local"; 
+        	 logger.warn("Connecting to  " + website);
     		 URL url = new URL(website);
              HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 			connection.setRequestMethod("GET");
