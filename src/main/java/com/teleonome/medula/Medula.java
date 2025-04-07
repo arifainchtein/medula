@@ -59,6 +59,7 @@ public class Medula {
 	SimpleDateFormat simpleFormatter = new SimpleDateFormat("dd/MM/yy HH:mm");
 	private int heartPid, hypothalamusPid, tomcatPid;
 	private double MAXIMUM_HEART_DB_SIZE=30*1024*1024;
+	
 	public Medula(){
 		String fileName =  Utils.getLocalDirectory() + "lib/Log4J.properties";
 		PropertyConfigurator.configure(fileName);
@@ -115,7 +116,8 @@ public class Medula {
 			boolean restartHypothalamus=false;
 			try{
 				denomeJSONObject = new JSONObject(denomeFileInString);
-				String teleonomeName = denomeJSONObject.getString("Name");
+				 teleonomeName = denomeJSONObject.getString("Name");
+				 logger.warn("Teleonome Name=" + teleonomeName);
 				//
 				// ok the teleonome is a valid file, now check if its late
 				//
