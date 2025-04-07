@@ -116,7 +116,8 @@ public class Medula {
 			boolean restartHypothalamus=false;
 			try{
 				denomeJSONObject = new JSONObject(denomeFileInString);
-				 teleonomeName = denomeJSONObject.getString("Name");
+				JSONObject denomeObject = denomeJSONObject.getJSONObject("Denome");
+				teleonomeName = denomeObject.getString("Name");
 				 logger.warn("Teleonome Name=" + teleonomeName);
 				//
 				// ok the teleonome is a valid file, now check if its late
