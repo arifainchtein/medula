@@ -84,7 +84,20 @@ public class Medula {
 				// TODO Auto-generated catch block
 				logger.warn(Utils.getStringException(e));
 			}
-
+			
+			//
+			// check the services
+			//
+			boolean networkok = checkNetwork();
+			boolean avahiok = checkService("avahi-daemon");
+			if(!avahiok) restartService("avahi-daemon");
+		    boolean postgresok = checkService("postgresql");
+			if(!postgresok) restartService("postgresql");
+		        
+			
+			
+			
+			
 			File denomeFile = new File(Utils.getLocalDirectory() + "Teleonome.denome");
 			if(!denomeFile.isFile()) {
 				logger.info("Teleonome.denome was not found, copying from previous_pulse" );
@@ -284,8 +297,8 @@ public class Medula {
 				results = Utils.executeCommand("sudo sh /home/pi/Teleonome/heart/StartHeartBG.sh");
 				data = "restarted the heart command response="  +String.join(", ", results);
 
+				Thread.sleep(10000);
 				logger.warn( data);
-				Thread.sleep(5000);
 				//
 				// now check the heart status
 				//
@@ -564,6 +577,74 @@ public class Medula {
 	}
 
 
+	private  boolean checkService(String serviceName) {
+        String command = "systemctl is-active --quiet " + serviceName;
+        boolean toReturn=false;
+        try {
+            Process process = Runtime.getRuntime().exec(command);
+            int exitCode = process.waitFor();
+            if (exitCode == 0) {
+            	logger.debug(serviceName + ": true");
+                toReturn=true;
+            } else {
+            	logger.debug(serviceName + ": false");
+            }
+        } catch (IOException | InterruptedException e) {
+        	logger.warn(Utils.getStringException(e));
+        }
+        return toReturn;
+    }
+
+	 private  boolean restartService(String servicename) {
+	        String command = "sudo service " + servicename + " restart";
+	        boolean toReturn=false;
+	        try {
+	            Process process = Runtime.getRuntime().exec(command);
+	            int exitCode = process.waitFor();
+	            if (exitCode == 0) {
+	                logger.debug("Restarting " + servicename + " ok");
+	                toReturn=true;
+	            } else {
+		                logger.debug("Restarting " + servicename + " Failed");
+	            }
+	        } catch (IOException | InterruptedException e) {
+	        	logger.warn(Utils.getStringException(e));
+	        }
+	        return toReturn;
+	    }
+
+	 
+    private  boolean checkNetwork() {
+        String command = "ping -c 1 8.8.8.8";
+        boolean toReturn=false;
+        try {
+            Process process = Runtime.getRuntime().exec(command);
+            int exitCode = process.waitFor();
+            if (exitCode == 0) {
+                logger.debug("Network: connected");
+                toReturn=true;
+            } else {
+            	 logger.debug("Network: disconnected, restarting");
+                restartNetworkInterface();
+            }
+        } catch (IOException | InterruptedException e) {
+        	logger.warn(Utils.getStringException(e));
+        }
+        return toReturn;
+    }
+
+    private  void restartNetworkInterface() {
+        try {
+        	logger.debug("Restarting wlan1...");
+            Process ifdown = Runtime.getRuntime().exec("sudo ifdown wlan1");
+            ifdown.waitFor();
+            Process ifup = Runtime.getRuntime().exec("sudo ifup wlan1");
+            ifup.waitFor();
+        } catch (IOException | InterruptedException e) {
+        	logger.warn(Utils.getStringException(e));
+        }
+    }
+    
 	private void copyLogFiles(Date faultDate) {
 
 		String srcFolderName="/home/pi/Teleonome/logs/" ;
