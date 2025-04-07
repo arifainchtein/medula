@@ -302,7 +302,7 @@ public class Medula {
 				logger.info(" about to restart the heart"  );
 				results = Utils.executeCommand("sh /home/pi/Teleonome/heart/StartHeartBG.sh");
 				data = "restarted the heart command response="  +String.join(", ", results);
-
+				int counter=0;
 				do {
 					heartPid=-1;
 					heartProcessInfo=new File("/home/pi/Teleonome/heart/HeartProcess.info");
@@ -314,7 +314,8 @@ public class Medula {
 						// TODO Auto-generated catch block
 						logger.warn(Utils.getStringException(e3));
 					}
-				}while(!heartProcessInfo.isFile());
+					counter++;
+				}while(!heartProcessInfo.isFile() && counter<4 );
 				Thread.sleep(10000);
 				logger.warn( data);
 				//
@@ -577,6 +578,7 @@ public class Medula {
 
 		//
 		// check the size of the heartdb
+		/*
 		File file = new File(Utils.getLocalDirectory() + "heart" + File.separator +  "heart.mapdb.p");
 		int heartDBOriginalSize = (int)file.length()/(1024*1024);
 		logger.debug("heartDB size=" + heartDBOriginalSize + " maximum=" +MAXIMUM_HEART_DB_SIZE/(1024*1024) );
@@ -649,7 +651,7 @@ public class Medula {
 			}
 		}
 
-
+*/
 
 
 		logger.info("Ending Medula at " + new Date());
