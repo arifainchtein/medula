@@ -489,28 +489,45 @@ public class Medula {
         	logger.info("webapp is not responsing killing it... " );
         	try {
     			webAppPid = Integer.parseInt(FileUtils.readFileToString(webAppProcessInfo).split("@")[0]);
+    			long lastTomcatPingMillis=0;
+            	String webserverPingInfoS = FileUtils.readFileToString(new File("WebServerPing.info"));
+    			if(webserverPingInfoS!=null) {
+    				JSONObject webserverPingInfo = new JSONObject(webserverPingInfoS);
+    				 lastTomcatPingMillis = webserverPingInfo.getLong(TeleonomeConstants.DATATYPE_TIMESTAMP_MILLISECONDS);
+    				long now = System.currentTimeMillis();
+    			}
+            	addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_TOMCAT_PING_LATE,"Last Tomcat Ping at at " + simpleFormatter.format(new Timestamp(lastTomcatPingMillis)));
+            	logger.warn( "webapp  is not running about to kill process " + webAppPid);
+    			Utils.executeCommand("sudo kill -9  " + webAppPid);
+    			try {
+    				Thread.sleep(5000);
+    			}catch(InterruptedException e) {
+    				logger.warn(Utils.getStringException(e));
+    			}
+    			logger.warn( "restarting webapp ");
+    			ArrayList results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartWebserverBG.sh");
+    			try {
+    				Thread.sleep(10000);
+    			}catch(InterruptedException e) {
+    				logger.warn(Utils.getStringException(e));
+    			}
+    			String data = "restarted the webapp command response="  +String.join(", ", results);
+    			logger.warn( data);
     		} catch (NumberFormatException | IOException e) {
     			// TODO Auto-generated catch block
     			logger.warn(Utils.getStringException(e));
-    		}
-        	addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_TOMCAT_PING_LATE,"Last Tomcat Ping at at " + simpleFormatter.format(new Timestamp(lastTomcatPingMillis)));
+    		} catch (InvalidDenomeException e) {
+				// TODO Auto-generated catch block
+    			logger.warn(Utils.getStringException(e));
+			} catch (JSONException e) {
+				// TODO Auto-generated catch block
+				logger.warn(Utils.getStringException(e));
+			} catch (InterruptedException e1) {
+				// TODO Auto-generated catch block
+				logger.warn(Utils.getStringException(e1));
+			}
+        	
 			
-			logger.warn( "webapp  is not running about to kill process " + webAppPid);
-			Utils.executeCommand("sudo kill -9  " + webAppPid);
-			try {
-				Thread.sleep(5000);
-			}catch(InterruptedException e) {
-				logger.warn(Utils.getStringException(e));
-			}
-			logger.warn( "restarting webapp ");
-			ArrayList results = Utils.executeCommand("sudo sh /home/pi/Teleonome/heart/StartHeartBG.sh");
-			try {
-				Thread.sleep(10000);
-			}catch(InterruptedException e) {
-				logger.warn(Utils.getStringException(e));
-			}
-			String data = "restarted the webapp command response="  +String.join(", ", results);
-			logger.warn( data);
     	
         }
          
