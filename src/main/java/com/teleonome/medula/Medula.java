@@ -300,24 +300,27 @@ public class Medula {
 					logger.debug("line 277 sleep interrupted");
 				}
 				logger.info(" about to restart the heart"  );
-				results = Utils.executeCommand("sudo sh /home/pi/Teleonome/heart/StartHeartBG.sh");
+				results = Utils.executeCommand("sh /home/pi/Teleonome/heart/StartHeartBG.sh");
 				data = "restarted the heart command response="  +String.join(", ", results);
 
+				do {
+					heartPid=-1;
+					heartProcessInfo=new File("/home/pi/Teleonome/heart/HeartProcess.info");
+					logger.info("After restarting, HeartProcess.info is a file=" + heartProcessInfo.isFile()  );
+					try {
+						heartPid = Integer.parseInt(FileUtils.readFileToString(heartProcessInfo).split("@")[0]);
+						logger.info("After restarting, heartPid=" + heartPid  );
+					} catch (NumberFormatException | IOException e3) {
+						// TODO Auto-generated catch block
+						logger.warn(Utils.getStringException(e3));
+					}
+				}while(!heartProcessInfo.isFile());
 				Thread.sleep(10000);
 				logger.warn( data);
 				//
 				// now check the heart status
 				//
-				heartPid=-1;
-				heartProcessInfo=new File("/home/pi/Teleonome/heart/HeartProcess.info");
-				logger.info("After restarting, HeartProcess.info is a file=" + heartProcessInfo.isFile()  );
-				try {
-					heartPid = Integer.parseInt(FileUtils.readFileToString(heartProcessInfo).split("@")[0]);
-					logger.info("After restarting, heartPid=" + heartPid  );
-				} catch (NumberFormatException | IOException e3) {
-					// TODO Auto-generated catch block
-					logger.warn(Utils.getStringException(e3));
-				}
+				
 				
 
 			}
@@ -333,122 +336,122 @@ public class Medula {
 			logger.warn(Utils.getStringException(e));
 		}
 
-		try {
-			//
-			// if the subscriberthread bug reappears
-			//
-			File dir = new File(Utils.getLocalDirectory() );
-			FileFilter fileFilter = new WildcardFileFilter("*.hprof");
-			File[] files = dir.listFiles(fileFilter);
-			if(files.length>0) {
-				StringBuffer data1=new StringBuffer();;
-				//				logger.info("foound hprof file, renaming them to hprog" );
-				//				File destFile;
-				for(int i=0;i<files.length;i++) {
-					data1.append(files[i].getAbsolutePath() );
-				}
+//		try {
+//			//
+//			// if the subscriberthread bug reappears
+//			//
+//			File dir = new File(Utils.getLocalDirectory() );
+//			FileFilter fileFilter = new WildcardFileFilter("*.hprof");
+//			File[] files = dir.listFiles(fileFilter);
+//			if(files.length>0) {
+//				StringBuffer data1=new StringBuffer();;
+//				//				logger.info("foound hprof file, renaming them to hprog" );
+//				//				File destFile;
+//				for(int i=0;i<files.length;i++) {
+//					data1.append(files[i].getAbsolutePath() );
+//				}
+//
+//				//
+//				//				// remove 
+//				//				//
+//				Arrays.stream(dir.listFiles((f, p) -> p.endsWith("hprof"))).forEach(File::delete);
+//
+//				//
+//				// add a pathology dene to the pulse
+//				//
+//				logger.warn("adding pathology dene");
+//				addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HYPOTHALAMUS_DIED,data1.toString());
+//				//Utils.executeCommand("sudo kill -9  " + hypothalamusPid);
+//				logger.warn("killing teleonomehypothalamus process");
+//				Utils.executeCommand("sudo kill -9  " + hypothalamusPid);
+//				copyLogFiles(faultDate);
+//
+//
+//				//	ArrayList results = Utils.executeCommand("sudo reboot");
+//				//logger.warn("restarting TeleonomeHypothalamus process");
+//
+//				ArrayList results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartHypothalamusBG.sh");
+//				String data = "restarted the TeleonomeHypothalamus command response="  +String.join(", ", results);
+//				logger.warn("after restarting TeleonomeHypothalamus while still in medule data=" + data);
+//			}
+//		}catch(IOException e) {
+//			logger.warn(Utils.getStringException(e));
+//
+//		} catch (InterruptedException e) {
+//			// TODO Auto-generated catch block
+//			logger.warn(Utils.getStringException(e));
+//		} catch (InvalidDenomeException e) {
+//			// TODO Auto-generated catch block
+//			logger.warn(Utils.getStringException(e));
+//		} catch (JSONException e) {
+//			// TODO Auto-generated catch block
+//			logger.warn(Utils.getStringException(e));
+//		}
 
-				//
-				//				// remove 
-				//				//
-				Arrays.stream(dir.listFiles((f, p) -> p.endsWith("hprof"))).forEach(File::delete);
 
-				//
-				// add a pathology dene to the pulse
-				//
-				logger.warn("adding pathology dene");
-				addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HYPOTHALAMUS_DIED,data1.toString());
-				//Utils.executeCommand("sudo kill -9  " + hypothalamusPid);
-				logger.warn("killing teleonomehypothalamus process");
-				Utils.executeCommand("sudo kill -9  " + hypothalamusPid);
-				copyLogFiles(faultDate);
-
-
-				//	ArrayList results = Utils.executeCommand("sudo reboot");
-				//logger.warn("restarting TeleonomeHypothalamus process");
-
-				ArrayList results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartHypothalamusBG.sh");
-				String data = "restarted the TeleonomeHypothalamus command response="  +String.join(", ", results);
-				logger.warn("after restarting TeleonomeHypothalamus while still in medule data=" + data);
-			}
-		}catch(IOException e) {
-			logger.warn(Utils.getStringException(e));
-
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			logger.warn(Utils.getStringException(e));
-		} catch (InvalidDenomeException e) {
-			// TODO Auto-generated catch block
-			logger.warn(Utils.getStringException(e));
-		} catch (JSONException e) {
-			// TODO Auto-generated catch block
-			logger.warn(Utils.getStringException(e));
-		}
-
-
-		try {
-			//
-			// until they fixed mockette, check for an hprof file
-			//
-			File dir = new File(Utils.getLocalDirectory() + "heart");
-			FileFilter fileFilter = new WildcardFileFilter("*.hprof");
-			File[] files = dir.listFiles(fileFilter);
-			if(files.length>0) {
-				//
-				// remove previous hprog
-				//
-				Arrays.stream(dir.listFiles((f, p) -> p.endsWith("hprog"))).forEach(File::delete);    
-
-				StringBuffer data1=new StringBuffer();;
-				logger.info("foound hprof file, renaming them to hprog" );
-				File destFile;
-				for(int i=0;i<files.length;i++) {
-					destFile = new File ("/home/pi/Teleonome/heart/"+ FilenameUtils.getBaseName(files[i].getAbsolutePath()) + ".hprog");
-					if(i>0) {
-						data1.append(",");
-					}
-					data1.append(files[i].getAbsolutePath() + ".hprog");
-					FileUtils.moveFile(files[i],destFile);
-				}
-
-				//
-				// add a pathology dene to the pulse
-				//
-				logger.warn("adding pathology dene");
-				addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HEART_CRASHED_HPROF,data1.toString());
-				//Utils.executeCommand("sudo kill -9  " + hypothalamusPid);
-				logger.warn("killing heart process heartPid=" + heartPid);
-				ArrayList results = Utils.executeCommand("sudo kill -9  " + heartPid);
-				String data = "kill heart, response="  +String.join(", ", results);
-				logger.warn("delete mapdb files");
-				Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/heart.mapdb*");
-				copyLogFiles(faultDate);
-				//	 results = Utils.executeCommand("sudo reboot");
-				logger.warn("restarting heart process");
-				
-				results = Utils.executeCommand("sudo sh /home/pi/Teleonome/heart/StartHeartBG.sh");
-				try {
-					Thread.sleep(5000);
-				}catch(InterruptedException e) {
-					logger.debug("line 412 sleep interrupted");
-				}
-				data = "restarted the heart command response="  +String.join(", ", results);
-				
-				logger.warn("after restarting heart while still in medule data=" + data);
-			}
-		}catch(IOException e) {
-			logger.warn(Utils.getStringException(e));
-
-		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
-			logger.warn(Utils.getStringException(e));
-		} catch (InvalidDenomeException e) {
-			// TODO Auto-generated catch block
-			logger.warn(Utils.getStringException(e));
-		} catch (JSONException e) {
-			// TODO Auto-generated catch block
-			logger.warn(Utils.getStringException(e));
-		}
+//		try {
+//			//
+//			// until they fixed mockette, check for an hprof file
+//			//
+//			File dir = new File(Utils.getLocalDirectory() + "heart");
+//			FileFilter fileFilter = new WildcardFileFilter("*.hprof");
+//			File[] files = dir.listFiles(fileFilter);
+//			if(files.length>0) {
+//				//
+//				// remove previous hprog
+//				//
+//				Arrays.stream(dir.listFiles((f, p) -> p.endsWith("hprog"))).forEach(File::delete);    
+//
+//				StringBuffer data1=new StringBuffer();;
+//				logger.info("foound hprof file, renaming them to hprog" );
+//				File destFile;
+//				for(int i=0;i<files.length;i++) {
+//					destFile = new File ("/home/pi/Teleonome/heart/"+ FilenameUtils.getBaseName(files[i].getAbsolutePath()) + ".hprog");
+//					if(i>0) {
+//						data1.append(",");
+//					}
+//					data1.append(files[i].getAbsolutePath() + ".hprog");
+//					FileUtils.moveFile(files[i],destFile);
+//				}
+//
+//				//
+//				// add a pathology dene to the pulse
+//				//
+//				logger.warn("adding pathology dene");
+//				addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HEART_CRASHED_HPROF,data1.toString());
+//				//Utils.executeCommand("sudo kill -9  " + hypothalamusPid);
+//				logger.warn("killing heart process heartPid=" + heartPid);
+//				ArrayList results = Utils.executeCommand("sudo kill -9  " + heartPid);
+//				String data = "kill heart, response="  +String.join(", ", results);
+//				logger.warn("delete mapdb files");
+//				Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/heart.mapdb*");
+//				copyLogFiles(faultDate);
+//				//	 results = Utils.executeCommand("sudo reboot");
+//				logger.warn("restarting heart process");
+//				
+//				results = Utils.executeCommand("sudo sh /home/pi/Teleonome/heart/StartHeartBG.sh");
+//				try {
+//					Thread.sleep(5000);
+//				}catch(InterruptedException e) {
+//					logger.debug("line 412 sleep interrupted");
+//				}
+//				data = "restarted the heart command response="  +String.join(", ", results);
+//				
+//				logger.warn("after restarting heart while still in medule data=" + data);
+//			}
+//		}catch(IOException e) {
+//			logger.warn(Utils.getStringException(e));
+//
+//		} catch (InterruptedException e) {
+//			// TODO Auto-generated catch block
+//			logger.warn(Utils.getStringException(e));
+//		} catch (InvalidDenomeException e) {
+//			// TODO Auto-generated catch block
+//			logger.warn(Utils.getStringException(e));
+//		} catch (JSONException e) {
+//			// TODO Auto-generated catch block
+//			logger.warn(Utils.getStringException(e));
+//		}
 
 		//
 		// read the denome file and see when was the last pulse
@@ -479,6 +482,7 @@ public class Medula {
 			  connection.setConnectTimeout(5000); // Set timeout to 5 seconds  
 		         connection.connect();
 		         int responseCode = connection.getResponseCode();
+		         logger.warn("responseCode=  " + website);
 		         if (responseCode == 200) webappok=true;
 		} catch (ProtocolException e) {
 			// TODO Auto-generated catch block
