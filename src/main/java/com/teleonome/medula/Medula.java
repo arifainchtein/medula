@@ -303,6 +303,8 @@ public class Medula {
 				results = Utils.executeCommand("sh /home/pi/Teleonome/heart/StartHeartBG.sh");
 				data = "restarted the heart command response="  +String.join(", ", results);
 				int counter=0;
+				logger.info("line 306 After restarting the heart, data=" + data)  ;
+				Thread.sleep(10000);
 				do {
 					heartPid=-1;
 					heartProcessInfo=new File("/home/pi/Teleonome/heart/HeartProcess.info");
@@ -315,9 +317,9 @@ public class Medula {
 						logger.warn(Utils.getStringException(e3));
 					}
 					counter++;
+					Thread.sleep(10000);
 				}while(!heartProcessInfo.isFile() && counter<4 );
-				Thread.sleep(10000);
-				logger.warn( data);
+
 				//
 				// now check the heart status
 				//
