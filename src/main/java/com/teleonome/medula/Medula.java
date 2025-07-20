@@ -287,6 +287,7 @@ public class Medula {
 					addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HEART_PULSE_LATE,data);
 					logger.warn( "heart is running about to kill process " + heartPid);
 					Utils.executeCommand("sudo kill -9  " + heartPid);
+					Thread.sleep(10000);
 					Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/heart.mapdb*");
 					data = "killing the heart command response="  +String.join(", ", results);
 					logger.warn( data);
