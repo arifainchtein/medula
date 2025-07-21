@@ -364,7 +364,7 @@ public class Medula {
 			  connection.setConnectTimeout(5000); // Set timeout to 5 seconds  
 		         connection.connect();
 		         int responseCode = connection.getResponseCode();
-		         logger.warn("responseCode=  " + website);
+		         logger.warn("responseCode=  " + responseCode);
 		         if (responseCode == 200) webappok=true;
 		} catch (ProtocolException e) {
 			// TODO Auto-generated catch block
