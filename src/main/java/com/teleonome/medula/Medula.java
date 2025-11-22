@@ -143,6 +143,7 @@ public class Medula {
 					//				PID TTY          TIME CMD
 					//				1872 pts/0    00:02:45 java
 					//				if it only returns one line then the process is not running
+					logger.info("line 146, results=" + results);
 					if(results.size()<2){
 						logger.info("heart is not running");
 						addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HEART_DIED, "data=" + data);
@@ -165,7 +166,7 @@ public class Medula {
 						logger.debug("line 277 sleep interrupted");
 					}
 					logger.info(" about to restart the heart"  );
-					results = Utils.executeCommand("sh /home/pi/Teleonome/heart/StartHeartBG.sh");
+					results = Utils.executeCommand("sudo sh /home/pi/Teleonome/heart/StartHeartBG.sh");
 					data = "restarted the heart command response="  +String.join(", ", results);
 					int counter=0;
 					logger.info("line 306 After restarting the heart, data=" + data)  ;
