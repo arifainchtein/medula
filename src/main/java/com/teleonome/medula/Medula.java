@@ -89,6 +89,24 @@ public class Medula {
 				logger.warn(Utils.getStringException(e));
 			}
 			
+			File denomeFile = new File(Utils.getLocalDirectory() + "Teleonome.denome");
+			if(!denomeFile.isFile() || denomeFile.length()==0) {
+				File previousTeleonomeFile = new File(Utils.getLocalDirectory() + "Teleonome.previous_pulse");
+				if(previousTeleonomeFile.isFile() && previousTeleonomeFile.length()>0) {
+					logger.info("Teleonome.denome was not found, copying from previous_pulse" );
+					FileUtils.copyFile(previousTeleonomeFile, new File(Utils.getLocalDirectory() + "Teleonome.denome"));
+					addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_MISSING_DENOME_FILE,"");
+					denomeFile = new File(Utils.getLocalDirectory() + "Teleonome.denome");
+				}else {
+					File originalTeleonome = new File(Utils.getLocalDirectory() + "Teleonome.original");
+					logger.info("Teleonome.denome was not found, copying from previous_pulse" );
+					FileUtils.copyFile(originalTeleonome, new File(Utils.getLocalDirectory() + "Teleonome.denome"));
+					addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_MISSING_DENOME_FILE,"");
+					denomeFile = new File(Utils.getLocalDirectory() + "Teleonome.denome");
+				}
+				
+
+			}
 			//
 			// check the services
 			//
@@ -207,14 +225,7 @@ public class Medula {
 			
 			
 			
-			File denomeFile = new File(Utils.getLocalDirectory() + "Teleonome.denome");
-			if(!denomeFile.isFile()) {
-				logger.info("Teleonome.denome was not found, copying from previous_pulse" );
-				FileUtils.copyFile(new File(Utils.getLocalDirectory() + "Teleonome.previous_pulse"), new File(Utils.getLocalDirectory() + "Teleonome.denome"));
-				addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_MISSING_DENOME_FILE,"");
-				denomeFile = new File(Utils.getLocalDirectory() + "Teleonome.denome");
-
-			}
+			
 			denomeFileInString = FileUtils.readFileToString(denomeFile, Charset.defaultCharset());
 			boolean validJSONFormat=true;
 			logger.info("checking the Teleonome.denome first, length=" + denomeFileInString.length() );
