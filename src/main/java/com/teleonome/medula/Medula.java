@@ -107,6 +107,25 @@ public class Medula {
 				
 
 			}
+			// now check if the denome is a valid json
+			//
+			
+			denomeFileInString = FileUtils.readFileToString(denomeFile, Charset.defaultCharset());
+			boolean validJSONFormat=false;
+			logger.info("line 115 checking the Teleonome.denome first, length=" + denomeFileInString.length() );
+			try{
+					denomeJSONObject = new JSONObject(denomeFileInString);
+					validJSONFormat=true;
+			}catch(Exception e) {
+				logger.warn(Utils.getStringException(e));
+			}finally{
+				if(!validJSONFormat) {
+					File originalTeleonomeFile = new File(Utils.getLocalDirectory() + "Teleonome.original");
+					logger.info("Teleonome.previous was not bad, copying from original" );
+					FileUtils.copyFile(originalTeleonomeFile, new File(Utils.getLocalDirectory() + "Teleonome.denome"));
+				}
+			}
+			
 			//
 			// check the services
 			//
@@ -227,7 +246,7 @@ public class Medula {
 			
 			
 			denomeFileInString = FileUtils.readFileToString(denomeFile, Charset.defaultCharset());
-			boolean validJSONFormat=true;
+			 validJSONFormat=true;
 			logger.info("checking the Teleonome.denome first, length=" + denomeFileInString.length() );
 			boolean restartHypothalamus=false;
 			try{
