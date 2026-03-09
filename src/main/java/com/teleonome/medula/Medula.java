@@ -190,15 +190,16 @@ public class Medula {
 						logger.warn( "heart is running about to kill process " + heartPid);
 						Utils.executeCommand("sudo kill -9  " + heartPid);
 						Thread.sleep(10000);
-						Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/heart.mapdb*");
-						Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/moquette_store.h2*");
-						Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/*.page*");
+						
 						
 						data = "killing the heart command response="  +String.join(", ", results);
 						logger.warn( data);
 						copyLogFiles(faultDate);
 					}
 					
+					Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/heart.mapdb*");
+					Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/moquette_store.h2*");
+					Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/*.page*");
 					FileUtils.deleteQuietly(heartProcessInfo);
 					try {
 						Thread.sleep(5000);
