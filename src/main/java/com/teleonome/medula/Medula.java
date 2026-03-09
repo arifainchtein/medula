@@ -191,6 +191,9 @@ public class Medula {
 						Utils.executeCommand("sudo kill -9  " + heartPid);
 						Thread.sleep(10000);
 						Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/heart.mapdb*");
+						Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/moquette_store.h2*");
+						Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/*.page*");
+						
 						data = "killing the heart command response="  +String.join(", ", results);
 						logger.warn( data);
 						copyLogFiles(faultDate);
@@ -242,8 +245,84 @@ public class Medula {
 				logger.warn(Utils.getStringException(e));
 			}
 			
+			//
+			// check the hippocampus
+			//
+			
+			try { 
+			 String hippocampusFileString = FileUtils.readFileToString(new File("home/pi/Teleonome/HippocampusStatus.json"), Charset.defaultCharset());
+			 JSONObject hippocampusStatus = new JSONObject(hippocampusFileString);
+			 long lastUpdate = hippocampusStatus.getLong(TeleonomeConstants.DATATYPE_TIMESTAMP_MILLISECONDS);
+			 int hippocampusPid=hippocampusStatus.getInt("hippocampusPid");
+			 //
+			 // check if its running
+			 //
+			 ArrayList results = Utils.executeCommand("ps -p " + hippocampusPid);
+				String data =  " hippocampus Last Pulse at " + heartLastPulseDate + String.join(", ", results);
+
+				//				 if the heart is running it will return two lines like:
+				//				PID TTY          TIME CMD
+				//				1872 pts/0    00:02:45 java
+				//				if it only returns one line then the process is not running
+				logger.info("line 264, results=" + results);
+				if(results.size()<2){
+					logger.info("hippocampusStatus is not running");
+					addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HIPPOCAMPUS_DIED, "data=" + data);
+				}else{
+					logger.info("hippocampus is  running but still late, killing it... data=" + data);
+					addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HIPPOCAMPUS_LATE,data);
+					logger.warn( "hippocampus is running about to kill process " + hippocampusPid);
+					Utils.executeCommand("sudo kill -9  " + hippocampusPid);
+					Thread.sleep(10000);
+					
+					data = "killing the hippocampus command response="  +String.join(", ", results);
+					logger.warn( data);
+					copyLogFiles(faultDate);
+				}
+				
+				FileUtils.deleteQuietly(new File("home/pi/Teleonome/HippocampusStatus.json"));
+				try {
+					Thread.sleep(5000);
+				}catch(InterruptedException e) {
+					logger.debug("line 277 sleep interrupted");
+				}
+				logger.info(" about to restart the hippocampus"  );
+				results = Utils.executeCommand("sudo sh /home/pi/Teleonome/heart/StartHippocampusBG.sh");
+				data = "restarted the hippocampus command response="  +String.join(", ", results);
+				int counter=0;
+				logger.info("line 306 After restarting the hippocampus, data=" + data)  ;
+				Thread.sleep(10000);
+				do {
+					heartPid=-1;
+					heartProcessInfo=new File("/home/pi/Teleonome/heart/HeartProcess.info");
+					logger.info("After restarting, HeartProcess.info is a file=" + heartProcessInfo.isFile()  );
+					try {
+						heartPid = Integer.parseInt(FileUtils.readFileToString(heartProcessInfo).split("@")[0]);
+						logger.info("After restarting, heartPid=" + heartPid  );
+					} catch (NumberFormatException | IOException e3) {
+						// TODO Auto-generated catch block
+						logger.warn(Utils.getStringException(e3));
+					}
+					counter++;
+					Thread.sleep(10000);
+				}while(!heartProcessInfo.isFile() && counter<4 );
+				
+				
+				
+			 
+			 long now = System.currentTimeMillis();
+			 long timeSinceLastUpdate =  now - lastUpdate;
+			 if(timeSinceLastUpdate>90000) {	
+			 }
+			}catch(Exception e ) {
+				logger.info("Exception verifing hippocampus" );
+				logger.warn(Utils.getStringException(e));
+			}
 			
 			
+			//
+			// hypothalamus
+			//
 			
 			denomeFileInString = FileUtils.readFileToString(denomeFile, Charset.defaultCharset());
 			 validJSONFormat=true;
