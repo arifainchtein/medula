@@ -158,14 +158,26 @@ public class Medula {
 				// TODO Auto-generated catch block
 				logger.warn(Utils.getStringException(e));
 			}
-			JSONObject heartDenomeJSONObject = new JSONObject(heartDenomeFileInString);
+			JSONObject heartDenomeJSONObject =null;
+			try {
+				heartDenomeJSONObject = new JSONObject(heartDenomeFileInString);
+			}catch(Exception e) {
+				logger.warn(Utils.getStringException(e));
+			}
 			boolean late;
-			String heartLastPulseDate = heartDenomeJSONObject.getString(TeleonomeConstants.PULSE_TIMESTAMP);
+			String heartLastPulseDate = "";
+			if(heartDenomeJSONObject!=null) {
+				heartDenomeJSONObject.getString(TeleonomeConstants.PULSE_TIMESTAMP);
+			}
 
 
 
 			try {
-				late= isPulseLate( heartDenomeJSONObject);
+				if(heartDenomeJSONObject!=null) {
+					late= isPulseLate( heartDenomeJSONObject);
+				}else {
+					late=true;
+				}
 				if(late ){
 					logger.info("the heart  is late, seconds since currentPulseFrequency=" + currentPulseFrequency + " numberOfPulsesBeforeIsLate=" + numberOfPulsesBeforeIsLate + " last pulse=" + timeSinceLastPulse/1000 + " maximum number of seconds =" + (numberOfPulsesBeforeIsLate*currentPulseFrequency)/1000);
 					//
@@ -174,8 +186,6 @@ public class Medula {
 
 					ArrayList results = Utils.executeCommand("ps -p " + heartPid);
 					String data =  " Heart Last Pulse at " + heartLastPulseDate + String.join(", ", results);
-
-
 					//				 if the heart is running it will return two lines like:
 					//				PID TTY          TIME CMD
 					//				1872 pts/0    00:02:45 java
@@ -196,7 +206,7 @@ public class Medula {
 						logger.warn( data);
 						copyLogFiles(faultDate);
 					}
-					
+					logger.warn( "deleting files");
 					Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/heart.mapdb*");
 					Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/moquette_store.h2*");
 					Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/*.page*");
