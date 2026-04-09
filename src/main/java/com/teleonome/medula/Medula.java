@@ -261,7 +261,7 @@ public class Medula {
 			//
 			
 			try { 
-			 String hippocampusFileString = FileUtils.readFileToString(new File("home/pi/Teleonome/HippocampusStatus.json"), Charset.defaultCharset());
+			 String hippocampusFileString = FileUtils.readFileToString(new File("/home/pi/Teleonome/HippocampusStatus.json"), Charset.defaultCharset());
 			 JSONObject hippocampusStatus = new JSONObject(hippocampusFileString);
 			 long lastUpdate = hippocampusStatus.getLong(TeleonomeConstants.DATATYPE_TIMESTAMP_MILLISECONDS);
 			 int hippocampusPid=hippocampusStatus.getInt("hippocampusPid");
@@ -291,7 +291,7 @@ public class Medula {
 					copyLogFiles(faultDate);
 				}
 				
-				FileUtils.deleteQuietly(new File("home/pi/Teleonome/HippocampusStatus.json"));
+				FileUtils.deleteQuietly(new File("/home/pi/Teleonome/HippocampusStatus.json"));
 				try {
 					Thread.sleep(5000);
 				}catch(InterruptedException e) {
