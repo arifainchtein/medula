@@ -298,33 +298,14 @@ public class Medula {
 					logger.debug("line 277 sleep interrupted");
 				}
 				logger.info(" about to restart the hippocampus"  );
-				results = Utils.executeCommand("sudo sh /home/pi/Teleonome/heart/StartHippocampusBG.sh");
+				results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartHippocampusBG.sh");
 				data = "restarted the hippocampus command response="  +String.join(", ", results);
 				int counter=0;
 				logger.info("line 306 After restarting the hippocampus, data=" + data)  ;
-				Thread.sleep(10000);
-				do {
-					heartPid=-1;
-					heartProcessInfo=new File("/home/pi/Teleonome/heart/HeartProcess.info");
-					logger.info("After restarting, HeartProcess.info is a file=" + heartProcessInfo.isFile()  );
-					try {
-						heartPid = Integer.parseInt(FileUtils.readFileToString(heartProcessInfo).split("@")[0]);
-						logger.info("After restarting, heartPid=" + heartPid  );
-					} catch (NumberFormatException | IOException e3) {
-						// TODO Auto-generated catch block
-						logger.warn(Utils.getStringException(e3));
-					}
-					counter++;
-					Thread.sleep(10000);
-				}while(!heartProcessInfo.isFile() && counter<4 );
-				
-				
-				
-			 
+				Thread.sleep(2000);	 
 			 long now = System.currentTimeMillis();
 			 long timeSinceLastUpdate =  now - lastUpdate;
-			 if(timeSinceLastUpdate>90000) {	
-			 }
+		
 			}catch(Exception e ) {
 				logger.info("Exception verifing hippocampus" );
 				logger.warn(Utils.getStringException(e));
