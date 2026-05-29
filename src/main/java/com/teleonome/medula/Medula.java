@@ -259,56 +259,56 @@ public class Medula {
 			//
 			// check the hippocampus
 			//
-			
-			try { 
-			 String hippocampusFileString = FileUtils.readFileToString(new File("/home/pi/Teleonome/HippocampusStatus.json"), Charset.defaultCharset());
-			 JSONObject hippocampusStatus = new JSONObject(hippocampusFileString);
-			 long lastUpdate = hippocampusStatus.getLong(TeleonomeConstants.DATATYPE_TIMESTAMP_MILLISECONDS);
-			 int hippocampusPid=hippocampusStatus.getInt("hippocampusPid");
-			 //
-			 // check if its running
-			 //
-			 ArrayList results = Utils.executeCommand("ps -p " + hippocampusPid);
-				String data =  " hippocampus Last Pulse at " + heartLastPulseDate + String.join(", ", results);
+			File hippocampusStatusFile = new File("/home/pi/Teleonome/HippocampusStatus.json");
+			int hippocampusPid = -1;
+			boolean hippocampusNeedsRestart = false;
 
-				//				 if the heart is running it will return two lines like:
-				//				PID TTY          TIME CMD
-				//				1872 pts/0    00:02:45 java
-				//				if it only returns one line then the process is not running
-				logger.info("line 264, results=" + results);
-				if(results.size()<2){
-					logger.info("hippocampusStatus is not running");
-					addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HIPPOCAMPUS_DIED, "data=" + data);
-				}else{
-					logger.info("hippocampus is  running but still late, killing it... data=" + data);
-					addPathologyDene(faultDate,TeleonomeConstants.PATHOLOGY_HIPPOCAMPUS_LATE,data);
-					logger.warn( "hippocampus is running about to kill process " + hippocampusPid);
-					Utils.executeCommand("sudo kill -9  " + hippocampusPid);
-					Thread.sleep(10000);
-					
-					data = "killing the hippocampus command response="  +String.join(", ", results);
-					logger.warn( data);
-					copyLogFiles(faultDate);
+			try {
+				if (!hippocampusStatusFile.isFile()) {
+					logger.warn("HippocampusStatus.json not found, hippocampus needs restart");
+					hippocampusNeedsRestart = true;
+				} else {
+					String hippocampusFileString = FileUtils.readFileToString(hippocampusStatusFile, Charset.defaultCharset());
+					JSONObject hippocampusStatus = new JSONObject(hippocampusFileString);
+					long lastUpdate = hippocampusStatus.getLong(TeleonomeConstants.DATATYPE_TIMESTAMP_MILLISECONDS);
+					hippocampusPid = hippocampusStatus.getInt("hippocampusPid");
+
+					long now = System.currentTimeMillis();
+					long timeSinceLastUpdate = now - lastUpdate;
+					boolean statusStale = timeSinceLastUpdate > (2 * 60 * 1000);
+
+					ArrayList pidResults = Utils.executeCommand("ps -p " + hippocampusPid);
+					boolean isRunning = pidResults.size() >= 2;
+					logger.info("hippocampus check: pid=" + hippocampusPid + " isRunning=" + isRunning + " statusStale=" + statusStale + " timeSinceLastUpdate=" + timeSinceLastUpdate / 1000 + "s");
+
+					if (!isRunning) {
+						logger.warn("hippocampus is not running (pid=" + hippocampusPid + ")");
+						addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_HIPPOCAMPUS_DIED, "pid=" + hippocampusPid);
+						hippocampusNeedsRestart = true;
+					} else if (statusStale) {
+						logger.warn("hippocampus status is stale (" + timeSinceLastUpdate / 1000 + "s), killing pid=" + hippocampusPid);
+						addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_HIPPOCAMPUS_LATE, "timeSinceLastUpdate=" + timeSinceLastUpdate / 1000 + "s");
+						Utils.executeCommand("sudo kill -9 " + hippocampusPid);
+						copyLogFiles(faultDate);
+						Thread.sleep(5000);
+						hippocampusNeedsRestart = true;
+					}
 				}
-				
-				FileUtils.deleteQuietly(new File("/home/pi/Teleonome/HippocampusStatus.json"));
-				try {
-					Thread.sleep(5000);
-				}catch(InterruptedException e) {
-					logger.debug("line 277 sleep interrupted");
+
+				if (hippocampusNeedsRestart) {
+					FileUtils.deleteQuietly(hippocampusStatusFile);
+					try {
+						Thread.sleep(5000);
+					} catch (InterruptedException e) {
+						logger.debug("hippocampus restart sleep interrupted");
+					}
+					logger.info("about to restart the hippocampus");
+					ArrayList results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartHippocampusBG.sh");
+					logger.info("restarted hippocampus, response=" + String.join(", ", results));
 				}
-				logger.info(" about to restart the hippocampus"  );
-				results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartHippocampusBG.sh");
-				data = "restarted the hippocampus command response="  +String.join(", ", results);
-				int counter=0;
-				logger.info("line 306 After restarting the hippocampus, data=" + data)  ;
-				Thread.sleep(2000);	 
-			 long now = System.currentTimeMillis();
-			 long timeSinceLastUpdate =  now - lastUpdate;
-		
-			}catch(Exception e ) {
-				logger.info("Exception verifing hippocampus" );
-				logger.warn(Utils.getStringException(e));
+
+			} catch (Exception e) {
+				logger.warn("Exception verifying hippocampus: " + Utils.getStringException(e));
 			}
 			
 			
