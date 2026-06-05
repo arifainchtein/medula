@@ -310,8 +310,64 @@ public class Medula {
 			} catch (Exception e) {
 				logger.warn("Exception verifying hippocampus: " + Utils.getStringException(e));
 			}
-			
-			
+
+
+			//
+			// check the cerebellum
+			//
+			File cerebellumStatusFile = new File("/home/pi/Teleonome/CerebellumStatus.json");
+			int cerebellumPid = -1;
+			boolean cerebellumNeedsRestart = false;
+
+			try {
+				if (!cerebellumStatusFile.isFile()) {
+					logger.warn("CerebellumStatus.json not found, cerebellum needs restart");
+					cerebellumNeedsRestart = true;
+				} else {
+					String cerebellumFileString = FileUtils.readFileToString(cerebellumStatusFile, Charset.defaultCharset());
+					JSONObject cerebellumStatus = new JSONObject(cerebellumFileString);
+					long lastUpdate = cerebellumStatus.getLong(TeleonomeConstants.DATATYPE_TIMESTAMP_MILLISECONDS);
+					cerebellumPid = cerebellumStatus.getInt("cerebellumPid");
+
+					long now = System.currentTimeMillis();
+					long timeSinceLastUpdate = now - lastUpdate;
+					boolean statusStale = timeSinceLastUpdate > (2 * 60 * 1000);
+
+					ArrayList pidResults = Utils.executeCommand("ps -p " + cerebellumPid);
+					boolean isRunning = pidResults.size() >= 2;
+					logger.info("cerebellum check: pid=" + cerebellumPid + " isRunning=" + isRunning + " statusStale=" + statusStale + " timeSinceLastUpdate=" + timeSinceLastUpdate / 1000 + "s");
+
+					if (!isRunning) {
+						logger.warn("cerebellum is not running (pid=" + cerebellumPid + ")");
+						addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_CEREBELLUM_DIED, "pid=" + cerebellumPid);
+						cerebellumNeedsRestart = true;
+					} else if (statusStale) {
+						logger.warn("cerebellum status is stale (" + timeSinceLastUpdate / 1000 + "s), killing pid=" + cerebellumPid);
+						addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_CEREBELLUM_LATE, "timeSinceLastUpdate=" + timeSinceLastUpdate / 1000 + "s");
+						Utils.executeCommand("sudo kill -9 " + cerebellumPid);
+						copyLogFiles(faultDate);
+						Thread.sleep(5000);
+						cerebellumNeedsRestart = true;
+					}
+				}
+
+				if (cerebellumNeedsRestart) {
+					FileUtils.deleteQuietly(cerebellumStatusFile);
+					try {
+						Thread.sleep(5000);
+					} catch (InterruptedException e) {
+						logger.debug("cerebellum restart sleep interrupted");
+					}
+					logger.info("about to restart the cerebellum");
+					ArrayList results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartCerebellumBG.sh");
+					logger.info("restarted cerebellum, response=" + String.join(", ", results));
+				}
+
+			} catch (Exception e) {
+				logger.warn("Exception verifying cerebellum: " + Utils.getStringException(e));
+			}
+
+
 			//
 			// hypothalamus
 			//
