@@ -178,6 +178,31 @@ public class Medula {
 				}else {
 					late=true;
 				}
+				//
+				// isPulseLate alone can stay false even when the heart is half-dead:
+				// Moquette pins each client to one of a fixed set of session event
+				// loop threads, and a thread that dies from an uncaught exception is
+				// never restarted (Moquette limitation, not ours to fix) -- every
+				// client on that shard goes silently unresponsive forever, but if the
+				// client that reports HeartTeleonome.denome happens to be on a
+				// surviving shard, the pulse keeps looking fine. Heart's own ping
+				// thread is independent of Moquette entirely and polls each session
+				// loop's actual thread-liveness, so check that too.
+				//
+				boolean sessionLoopDead = false;
+				try {
+					String heartPingInfoString = FileUtils.readFileToString(new File(Utils.getLocalDirectory() + "heart/HeartPing.info"));
+					JSONObject heartPingInfo = new JSONObject(heartPingInfoString);
+					int deadSessionEventLoopCount = heartPingInfo.optInt("deadSessionEventLoopCount", 0);
+					if(deadSessionEventLoopCount > 0) {
+						sessionLoopDead = true;
+						logger.warn("heart has " + deadSessionEventLoopCount + " dead session event loop(s) out of " + heartPingInfo.optInt("sessionEventLoopCount", -1) + " -- clients pinned to those shards are permanently unresponsive");
+						addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_HEART_SESSION_LOOP_DEAD, "deadSessionEventLoopCount=" + deadSessionEventLoopCount);
+					}
+				} catch (Exception e) {
+					logger.warn(Utils.getStringException(e));
+				}
+				late = late || sessionLoopDead;
 				if(late ){
 					logger.info("the heart  is late, seconds since currentPulseFrequency=" + currentPulseFrequency + " numberOfPulsesBeforeIsLate=" + numberOfPulsesBeforeIsLate + " last pulse=" + timeSinceLastPulse/1000 + " maximum number of seconds =" + (numberOfPulsesBeforeIsLate*currentPulseFrequency)/1000);
 					//
