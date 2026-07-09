@@ -165,6 +165,7 @@ public class Medula {
 				logger.warn(Utils.getStringException(e));
 			}
 			boolean late;
+			boolean heartPulseLate = false;
 			String heartLastPulseDate = "";
 			if(heartDenomeJSONObject!=null) {
 				heartDenomeJSONObject.getString(TeleonomeConstants.PULSE_TIMESTAMP);
@@ -203,6 +204,7 @@ public class Medula {
 					logger.warn(Utils.getStringException(e));
 				}
 				late = late || sessionLoopDead;
+				heartPulseLate = late;
 				if(late ){
 					logger.info("the heart  is late, seconds since currentPulseFrequency=" + currentPulseFrequency + " numberOfPulsesBeforeIsLate=" + numberOfPulsesBeforeIsLate + " last pulse=" + timeSinceLastPulse/1000 + " maximum number of seconds =" + (numberOfPulsesBeforeIsLate*currentPulseFrequency)/1000);
 					//
@@ -409,10 +411,18 @@ public class Medula {
 				//
 				// ok the teleonome is a valid file, now check if its late
 				//
-				 late= isPulseLate( denomeJSONObject);
+				 late= isPulseLate( denomeJSONObject) || heartPulseLate;
 				String lastPulseDate = denomeJSONObject.getString(TeleonomeConstants.PULSE_TIMESTAMP);
 				if(late){
-					logger.info("PULSE LATE, seconds since currentPulseFrequency=" + currentPulseFrequency + " numberOfPulsesBeforeIsLate=" + numberOfPulsesBeforeIsLate + " last pulse=" + timeSinceLastPulse/1000 + " maximum number of seconds =" + (numberOfPulsesBeforeIsLate*currentPulseFrequency)/1000);
+					//
+					// Hypothalamus keeps its own Teleonome.denome pulse fresh locally,
+					// so isPulseLate() alone stays false even when its MQTT client to
+					// Heart is wedged and never reconnects -- restarting Heart in that
+					// case is pointless since Hypothalamus never re-establishes the
+					// session. heartPulseLate folds that signal in so a stuck Heart
+					// pulse also forces a Hypothalamus restart.
+					//
+					logger.info("PULSE LATE, heartPulseLate=" + heartPulseLate + " seconds since currentPulseFrequency=" + currentPulseFrequency + " numberOfPulsesBeforeIsLate=" + numberOfPulsesBeforeIsLate + " last pulse=" + timeSinceLastPulse/1000 + " maximum number of seconds =" + (numberOfPulsesBeforeIsLate*currentPulseFrequency)/1000);
 					validJSONFormat=true;
 					restartHypothalamus=true;
 
@@ -561,7 +571,17 @@ public class Medula {
         	File webAppProcessInfo=new File("/home/pi/Teleonome/WebServerProcess.info");
         	logger.info("webapp is not responsing killing it... " );
         	try {
-    			webAppPid = Integer.parseInt(FileUtils.readFileToString(webAppProcessInfo).split("@")[0]);
+        		//
+        		// webAppPid can easily be stale or missing (e.g. WebServerProcess.info
+        		// is empty because the last restart died before Tomcat got far enough
+        		// to write its own PID) -- that must not stop us from still attempting
+        		// the restart below, so the kill is best-effort and doesn't gate it.
+        		//
+    			try {
+    				webAppPid = Integer.parseInt(FileUtils.readFileToString(webAppProcessInfo).split("@")[0]);
+    			} catch (NumberFormatException | IOException e) {
+    				logger.warn("could not read webAppPid, will still attempt restart: " + Utils.getStringException(e));
+    			}
     			long lastTomcatPingMillis=0;
             	String webserverPingInfoS = FileUtils.readFileToString(new File("WebServerPing.info"));
     			if(webserverPingInfoS!=null) {
@@ -570,22 +590,54 @@ public class Medula {
     				long now = System.currentTimeMillis();
     			}
             	addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_TOMCAT_PING_LATE,"Last Tomcat Ping at at " + simpleFormatter.format(new Timestamp(lastTomcatPingMillis)));
-            	logger.warn( "webapp  is not running about to kill process " + webAppPid);
-    			Utils.executeCommand("sudo kill -9  " + webAppPid);
+            	if(webAppPid>0) {
+            		logger.warn( "webapp  is not running about to kill process " + webAppPid);
+            		Utils.executeCommand("sudo kill -9  " + webAppPid);
+            	}
     			try {
     				Thread.sleep(5000);
     			}catch(InterruptedException e) {
     				logger.warn(Utils.getStringException(e));
     			}
     			logger.warn( "restarting webapp ");
+    			FileUtils.deleteQuietly(webAppProcessInfo);
     			ArrayList results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartWebserverBG.sh");
-    			try {
-    				Thread.sleep(10000);
-    			}catch(InterruptedException e) {
-    				logger.warn(Utils.getStringException(e));
-    			}
     			String data = "restarted the webapp command response="  +String.join(", ", results);
     			logger.warn( data);
+
+    			//
+    			// StartWebserverBG.sh backgrounds catalina.sh and returns almost
+    			// instantly -- "response=done" only proves the launch command was
+    			// issued, not that Tomcat actually came up. Poll the same HTTP check
+    			// used above until it responds or we give up, same pattern as the
+    			// heart restart verification.
+    			//
+    			boolean webappRestartedOk = false;
+    			int webappCheckCounter = 0;
+    			do {
+    				try {
+    					Thread.sleep(10000);
+    				}catch(InterruptedException e) {
+    					logger.warn(Utils.getStringException(e));
+    				}
+    				try {
+    					URL verifyUrl = new URL("http://"+teleonomeName+".local");
+    					HttpURLConnection verifyConnection = (HttpURLConnection) verifyUrl.openConnection();
+    					verifyConnection.setRequestMethod("GET");
+    					verifyConnection.setConnectTimeout(5000);
+    					verifyConnection.connect();
+    					webappRestartedOk = (verifyConnection.getResponseCode() == 200);
+    				} catch (IOException e2) {
+    					logger.warn(Utils.getStringException(e2));
+    				}
+    				webappCheckCounter++;
+    				logger.info("After restarting webapp, responding=" + webappRestartedOk + " attempt=" + webappCheckCounter);
+    			} while(!webappRestartedOk && webappCheckCounter<4);
+
+    			if(!webappRestartedOk) {
+    				logger.warn("webapp did not come back up after restart");
+    				addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_TOMCAT_PING_LATE, "webapp did not come back up after restart");
+    			}
     		} catch (NumberFormatException | IOException e) {
     			// TODO Auto-generated catch block
     			logger.warn(Utils.getStringException(e));
@@ -599,9 +651,9 @@ public class Medula {
 				// TODO Auto-generated catch block
 				logger.warn(Utils.getStringException(e1));
 			}
-        	
-			
-    	
+
+
+
         }
          
        
