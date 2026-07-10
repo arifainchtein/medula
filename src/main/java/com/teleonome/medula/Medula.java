@@ -134,6 +134,7 @@ public class Medula {
 			if(!avahiok) restartService("avahi-daemon");
 		    boolean postgresok = checkService("postgresql");
 			if(!postgresok) restartService("postgresql");
+			checkPowerThrottling(faultDate);
 		        
 			
 			//
@@ -842,7 +843,37 @@ public class Medula {
         	logger.warn(Utils.getStringException(e));
         }
     }
-    
+
+    //
+    // vcgencmd get_throttled returns a bitmask, e.g. "throttled=0x50005".
+    // Bits 0/2 mean under-voltage/throttling is happening right now; bits
+    // 16/18 just mean it happened at some point since boot (sticky, not
+    // urgent). We only want to raise a pathology for the currently-active
+    // condition, since a pile of simultaneous JVM restarts drawing a current
+    // spike is exactly the kind of thing that causes Heart/Tomcat to fail to
+    // come back up without any Java-level exception to explain why.
+    //
+    private void checkPowerThrottling(Date faultDate) {
+    	try {
+    		ArrayList results = Utils.executeCommand("vcgencmd get_throttled");
+    		if(results!=null && !results.isEmpty()) {
+    			String line = String.join(" ", results).trim();
+    			int hexStart = line.indexOf("0x");
+    			if(hexStart>=0) {
+    				long throttled = Long.parseLong(line.substring(hexStart+2).trim(), 16);
+    				boolean underVoltageNow = (throttled & 0x1) != 0;
+    				boolean throttledNow = (throttled & 0x4) != 0;
+    				if(underVoltageNow || throttledNow) {
+    					logger.warn("power throttling detected: " + line + " underVoltageNow=" + underVoltageNow + " throttledNow=" + throttledNow);
+    					addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_POWER_UNDERVOLTAGE, line + " underVoltageNow=" + underVoltageNow + " throttledNow=" + throttledNow);
+    				}
+    			}
+    		}
+    	} catch (Exception e) {
+    		logger.warn(Utils.getStringException(e));
+    	}
+    }
+
 	private void copyLogFiles(Date faultDate) {
 
 		String srcFolderName="/home/pi/Teleonome/logs/" ;
