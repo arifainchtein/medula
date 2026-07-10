@@ -234,6 +234,16 @@ public class Medula {
 						logger.warn( data);
 						copyLogFiles(faultDate);
 					}
+					//
+					// heartPid is a single cached pid read from HeartProcess.info, which can be
+					// stale or racing with Heart's own rewrite of that file. Killing only that pid
+					// has repeatedly left orphaned Heart.jar instances running alongside a freshly
+					// started one (observed piling up to 5 concurrent instances on Ra). Sweep by
+					// process name so every stray instance is gone before we start a new one.
+					//
+					logger.warn("sweeping for any remaining Heart.jar processes before restart");
+					Utils.executeCommand("sudo pkill -9 -f Heart.jar");
+					Thread.sleep(2000);
 					logger.warn( "deleting files");
 					Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/heart.mapdb*");
 					Utils.executeCommand("sudo rm /home/pi/Teleonome/heart/moquette_store.h2*");
@@ -1117,7 +1127,7 @@ public class Medula {
 			JSONObject selectedPathologyDeneChain = DenomeUtils.getDeneChainByIdentity(denomeJSONObject, new Identity(medulaPathologyLocationPointer));
 
 
-			String pathologyName = TeleonomeConstants.PATHOLOGY_MEDULA_FORCED_REBOOT;
+			String pathologyName = pathologyCause;
 			String pathologyLocation = TeleonomeConstants.PATHOLOGY_LOCATION_MEDULA;
 			Vector extraDeneWords = new Vector();
 			JSONObject pathologyDeneDeneWord = Utils.createDeneWordJSONObject(TeleonomeConstants.PATHOLOGY_EVENT_MILLISECONDS, "" + faultTime.getTime() ,null,"long",true);
