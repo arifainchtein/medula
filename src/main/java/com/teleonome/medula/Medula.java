@@ -5,9 +5,13 @@ package com.teleonome.medula;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.net.HttpURLConnection;
 import java.net.ProtocolException;
 import java.net.URL;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
+import java.nio.channels.OverlappingFileLockException;
 import java.nio.charset.Charset;
 import java.sql.Timestamp;
 import java.text.DecimalFormat;
@@ -303,8 +307,21 @@ public class Medula {
 
 			try {
 				if (!hippocampusStatusFile.isFile()) {
-					logger.warn("HippocampusStatus.json not found, hippocampus needs restart");
-					hippocampusNeedsRestart = true;
+					//
+					// HippocampusStatus.json is only written once Hippocampus finishes its
+					// preload phase, which can legitimately take longer than one Medula cycle.
+					// Only restart if there isn't already a Hippocampus.jar process running -
+					// otherwise this piles up duplicate instances every cycle, each holding its
+					// own orphaned MQTT connection to Heart, until Heart runs out of memory.
+					//
+					ArrayList runningHippocampusResults = Utils.executeCommand("pgrep -f Hippocampus.jar");
+					boolean hippocampusAlreadyRunning = runningHippocampusResults.size() >= 1;
+					if (hippocampusAlreadyRunning) {
+						logger.warn("HippocampusStatus.json not found, but hippocampus process already running (still preloading?), skipping restart this cycle: " + runningHippocampusResults);
+					} else {
+						logger.warn("HippocampusStatus.json not found, hippocampus needs restart");
+						hippocampusNeedsRestart = true;
+					}
 				} else {
 					String hippocampusFileString = FileUtils.readFileToString(hippocampusStatusFile, Charset.defaultCharset());
 					JSONObject hippocampusStatus = new JSONObject(hippocampusFileString);
@@ -1359,12 +1376,45 @@ public class Medula {
 	public static void main(String[] args) {
 		if(args.length>0 && args[0].equals("-v")) {
 			System.out.println("Medula Build " + buildNumber);
-		}else {
-			new Medula().monitor();
+			return;
 		}
 
+		//
+		// StartMedula.sh has no concurrency guard and cron fires it every 5 minutes
+		// regardless of whether the previous run finished -- under Pi power throttling
+		// a run can take much longer than usual, so without a lock several Medula
+		// processes end up running at once, each independently killing/restarting
+		// Heart and racing each other, leaving multiple orphaned Heart instances behind.
+		// tryLock() is non-blocking: if another instance already holds it, exit
+		// immediately instead of piling up. The OS releases the lock automatically
+		// even if this process is killed, so there's no stale-lock cleanup needed.
+		//
+		FileLock lock = acquireSingleInstanceLock();
+		if(lock == null) {
+			System.out.println("Another Medula instance is already running, exiting");
+			return;
+		}
+		try {
+			new Medula().monitor();
+		} finally {
+			try {
+				lock.release();
+				lock.channel().close();
+			} catch (IOException e) {
+				// nothing to do, process is exiting anyway
+			}
+		}
+	}
 
-
+	private static FileLock acquireSingleInstanceLock() {
+		try {
+			File lockFile = new File(Utils.getLocalDirectory() + "Medula.lock");
+			RandomAccessFile raf = new RandomAccessFile(lockFile, "rw");
+			FileChannel channel = raf.getChannel();
+			return channel.tryLock();
+		} catch (IOException | OverlappingFileLockException e) {
+			return null;
+		}
 	}
 
 }
