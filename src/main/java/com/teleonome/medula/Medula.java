@@ -207,7 +207,7 @@ public class Medula {
 				late = late || sessionLoopDead;
 				heartPulseLate = late;
 				if(late ){
-					logger.info("the heart  is late, seconds since currentPulseFrequency=" + currentPulseFrequency + " numberOfPulsesBeforeIsLate=" + numberOfPulsesBeforeIsLate + " last pulse=" + timeSinceLastPulse/1000 + " maximum number of seconds =" + (numberOfPulsesBeforeIsLate*currentPulseFrequency)/1000);
+					logger.info("the heart  is late, seconds since currentPulseFrequency=" + currentPulseFrequency + " numberOfPulsesBeforeIsLate=" + numberOfPulsesBeforeIsLate + " last pulse=" + timeSinceLastPulse/1000 + " maximum number of seconds =" + (numberOfPulsesBeforeIsLate*(currentPulseFrequency + currentPulseGenerationDuration))/1000);
 					//
 					// if we are late, check to see if the pacemaker is running, 
 					// get the processid
@@ -422,18 +422,18 @@ public class Medula {
 				//
 				// ok the teleonome is a valid file, now check if its late
 				//
-				 late= isPulseLate( denomeJSONObject) || heartPulseLate;
+				// Deliberately decoupled from heartPulseLate: Hypothalamus owns the
+				// system pulse, and a Heart problem is Heart's problem to restart on
+				// its own (see the heart-check block above). Folding heartPulseLate in
+				// here used to force a Hypothalamus restart any time Heart looked late,
+				// even when Hypothalamus's own pulse was fine and Heart's staleness
+				// turned out to be a Heart-side bug unrelated to the Hypothalamus<->Heart
+				// connection -- that just added unnecessary churn to the pulse itself.
+				//
+				 late= isPulseLate( denomeJSONObject);
 				String lastPulseDate = denomeJSONObject.getString(TeleonomeConstants.PULSE_TIMESTAMP);
 				if(late){
-					//
-					// Hypothalamus keeps its own Teleonome.denome pulse fresh locally,
-					// so isPulseLate() alone stays false even when its MQTT client to
-					// Heart is wedged and never reconnects -- restarting Heart in that
-					// case is pointless since Hypothalamus never re-establishes the
-					// session. heartPulseLate folds that signal in so a stuck Heart
-					// pulse also forces a Hypothalamus restart.
-					//
-					logger.info("PULSE LATE, heartPulseLate=" + heartPulseLate + " seconds since currentPulseFrequency=" + currentPulseFrequency + " numberOfPulsesBeforeIsLate=" + numberOfPulsesBeforeIsLate + " last pulse=" + timeSinceLastPulse/1000 + " maximum number of seconds =" + (numberOfPulsesBeforeIsLate*currentPulseFrequency)/1000);
+					logger.info("PULSE LATE, heartPulseLate=" + heartPulseLate + " seconds since currentPulseFrequency=" + currentPulseFrequency + " numberOfPulsesBeforeIsLate=" + numberOfPulsesBeforeIsLate + " last pulse=" + timeSinceLastPulse/1000 + " maximum number of seconds =" + (numberOfPulsesBeforeIsLate*(currentPulseFrequency + currentPulseGenerationDuration))/1000);
 					validJSONFormat=true;
 					restartHypothalamus=true;
 
