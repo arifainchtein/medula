@@ -622,6 +622,20 @@ public class Medula {
             		logger.warn( "webapp  is not running about to kill process " + webAppPid);
             		Utils.executeCommand("sudo kill -9  " + webAppPid);
             	}
+    			//
+    			// webAppPid is a single cached pid read from WebServerProcess.info,
+    			// which gets deleted below on every attempt and only rewritten once
+    			// Tomcat fully finishes starting. If a restart attempt fails, the next
+    			// cycle finds no pid file, skips the kill above entirely, and launches
+    			// another catalina.sh on top of whatever's still there -- repeated
+    			// failures pile up multiple half-started/hung Tomcat instances instead
+    			// of ever being cleaned up (observed on Ra and Tlaloc: Medula gave up
+    			// after 4 failed attempts each, needing a manual sweep to recover).
+    			// Sweep by process name unconditionally, same fix pattern as Heart's
+    			// restart, so every stray instance is gone before we start a new one.
+    			//
+    			logger.warn("sweeping for any remaining Tomcat processes before restart");
+    			Utils.executeCommand("sudo pkill -9 -f org.apache.catalina.startup.Bootstrap");
     			try {
     				Thread.sleep(5000);
     			}catch(InterruptedException e) {
