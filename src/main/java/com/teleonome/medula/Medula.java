@@ -314,7 +314,11 @@ public class Medula {
 					// otherwise this piles up duplicate instances every cycle, each holding its
 					// own orphaned MQTT connection to Heart, until Heart runs out of memory.
 					//
-					ArrayList runningHippocampusResults = Utils.executeCommand("pgrep -f Hippocampus.jar");
+					// The [H] bracket avoids pgrep matching its own "sh -c pgrep -f ..."
+					// invocation, which otherwise always self-matches and reports a
+					// false positive on every single cycle, permanently masking a dead
+					// Hippocampus.
+					ArrayList runningHippocampusResults = Utils.executeCommand("pgrep -f [H]ippocampus.jar");
 					boolean hippocampusAlreadyRunning = runningHippocampusResults.size() >= 1;
 					if (hippocampusAlreadyRunning) {
 						logger.warn("HippocampusStatus.json not found, but hippocampus process already running (still preloading?), skipping restart this cycle: " + runningHippocampusResults);
