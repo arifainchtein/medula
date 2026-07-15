@@ -63,6 +63,18 @@ public class Medula {
 	SimpleDateFormat simpleFormatter = new SimpleDateFormat("dd/MM/yy HH:mm");
 	private int heartPid, hypothalamusPid, tomcatPid;
 	private double MAXIMUM_HEART_DB_SIZE=30*1024*1024;
+	//
+	// jSerialComm has a known, unresolved native (off-heap) memory leak on some serial
+	// read patterns (see github.com/Fazecast/jSerialComm/issues/596) that Java's own
+	// -Xmx/-XX:MaxDirectMemorySize can't see or bound, since it's memory the native
+	// library allocates directly. Rather than chase that upstream bug, cap the blast
+	// radius: if Hypothalamus's RSS crosses this ceiling, restart it the same clean way
+	// we already do for a late pulse, before it grows large enough to trigger a
+	// system-wide OOM-kill (which previously picked arbitrary victims and triggered
+	// power-draw spikes/undervoltage during recovery -- see conversation 2026-07-15).
+	// 300MB is well above Hypothalamus's normal operating range (~110-145MB observed)
+	// but far below the point where it starts starving the rest of the Pi.
+	private static final long HYPOTHALAMUS_MAX_RSS_KB = 300000;
 	
 	public Medula(){
 		String fileName =  Utils.getLocalDirectory() + "lib/Log4J.properties";
@@ -435,6 +447,15 @@ public class Medula {
 			 validJSONFormat=true;
 			logger.info("checking the Teleonome.denome first, length=" + denomeFileInString.length() );
 			boolean restartHypothalamus=false;
+			//
+			// Late-pulse and crash restarts already imply Hypothalamus is stuck or dead,
+			// not actively writing. A memory-ceiling restart is different: Hypothalamus can
+			// be perfectly alive and mid-write to Teleonome.denome at the moment we decide to
+			// kill -9 it (see conversation 2026-07-15), which can truncate/corrupt the file.
+			// This flag marks that specific case so the kill step below can snapshot the file
+			// first and verify/repair it after, instead of applying that overhead to every
+			// restart path.
+			boolean memoryCeilingRestart=false;
 			try{
 				denomeJSONObject = new JSONObject(denomeFileInString);
 				JSONObject denomeObject = denomeJSONObject.getJSONObject("Denome");
@@ -474,6 +495,21 @@ public class Medula {
 						logger.warn(Utils.getStringException(e));
 					}
 					//
+				}
+
+				if(!restartHypothalamus && hypothalamusPid>0) {
+					try {
+						long hypothalamusRssKb = getProcessResidentMemoryKb(hypothalamusPid);
+						if(hypothalamusRssKb > HYPOTHALAMUS_MAX_RSS_KB) {
+							logger.warn("Hypothalamus RSS=" + hypothalamusRssKb + "Kb exceeds ceiling=" + HYPOTHALAMUS_MAX_RSS_KB + "Kb, forcing restart");
+							restartHypothalamus=true;
+							memoryCeilingRestart=true;
+							addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_HYPOTHALAMUS_MEMORY_CEILING,
+									"RSS=" + hypothalamusRssKb + "Kb ceiling=" + HYPOTHALAMUS_MAX_RSS_KB + "Kb");
+						}
+					} catch (InterruptedException e) {
+						logger.warn(Utils.getStringException(e));
+					}
 
 				}
 			}catch (JSONException e) {
@@ -536,8 +572,52 @@ public class Medula {
 
 			if(restartHypothalamus) {
 				try {
+					//
+					// Only the memory-ceiling path can be killing an otherwise-healthy,
+					// actively-writing Hypothalamus (see the memoryCeilingRestart comment
+					// above) -- snapshot Teleonome.denome first so a kill -9 landing mid-write
+					// can be detected and repaired before we hand the file back to a freshly
+					// restarted Hypothalamus.
+					File liveDenomeFile = new File(Utils.getLocalDirectory() + "Teleonome.denome");
+					File preKillSnapshotFile = new File(Utils.getLocalDirectory() + "Teleonome.denome.prekill_snapshot");
+					boolean tookSnapshot=false;
+					if(memoryCeilingRestart) {
+						try {
+							FileUtils.copyFile(liveDenomeFile, preKillSnapshotFile);
+							tookSnapshot=true;
+						} catch(IOException e) {
+							logger.warn("could not snapshot Teleonome.denome before memory-ceiling kill: " + Utils.getStringException(e));
+						}
+					}
+
 					Utils.executeCommand("sudo kill -9  " + hypothalamusPid);
 					logger.warn("killing teleonomehypothalamus process");
+
+					if(tookSnapshot) {
+						try {
+							if(FileUtils.contentEquals(preKillSnapshotFile, liveDenomeFile)) {
+								logger.info("Teleonome.denome unchanged by the memory-ceiling kill, no repair needed");
+							} else {
+								long preKillLength = preKillSnapshotFile.length();
+								long postKillLength = liveDenomeFile.length();
+								//
+								// Restore from the pre-kill snapshot, not Teleonome.original --
+								// the snapshot is a complete, valid denome with all the accumulated
+								// Mnemosyne history intact (just missing whatever partial write was
+								// in flight at kill time), while Teleonome.original is a blank
+								// template that would wipe all of that history out.
+								logger.warn("Teleonome.denome changed while killing Hypothalamus for the memory ceiling (preKillLength=" + preKillLength + " postKillLength=" + postKillLength + "), likely a kill mid-write -- restoring the pre-kill snapshot before restart");
+								FileUtils.deleteQuietly(liveDenomeFile);
+								FileUtils.copyFile(preKillSnapshotFile, liveDenomeFile);
+								addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_CORRUPT_PULSE_FILE,
+										"Restored Teleonome.denome from pre-kill snapshot after memory-ceiling kill mid-write, preKillLength=" + preKillLength + " postKillLength=" + postKillLength);
+							}
+						} catch(IOException e) {
+							logger.warn("could not verify/reseed Teleonome.denome after memory-ceiling kill: " + Utils.getStringException(e));
+						} finally {
+							FileUtils.deleteQuietly(preKillSnapshotFile);
+						}
+					}
 
 					copyLogFiles(faultDate);
 					try {
@@ -838,6 +918,24 @@ public class Medula {
         }
         return toReturn;
     }
+
+	 //
+	 // Resident memory of a running process, in Kb, via "ps -o rss=" (no header line,
+	 // so a single trimmed numeric line back). Returns -1 if the process isn't running
+	 // or the output can't be parsed, which the caller treats as "can't tell, don't act".
+	 //
+	 private long getProcessResidentMemoryKb(int pid) throws InterruptedException {
+		 try {
+			 ArrayList results = Utils.executeCommand("ps -p " + pid + " -o rss=");
+			 if(results.isEmpty()) return -1;
+			 String rssString = ((String)results.get(0)).trim();
+			 if(rssString.isEmpty()) return -1;
+			 return Long.parseLong(rssString);
+		 } catch (IOException | NumberFormatException e) {
+			 logger.warn(Utils.getStringException(e));
+			 return -1;
+		 }
+	 }
 
 	 private  boolean restartService(String servicename) {
 	        String command = "sudo service " + servicename + " restart";
