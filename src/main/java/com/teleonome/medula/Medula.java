@@ -2,8 +2,10 @@ package com.teleonome.medula;
 
 
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileFilter;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.net.HttpURLConnection;
@@ -982,6 +984,23 @@ public class Medula {
 				 StandardCopyOption.ATOMIC_MOVE);
 	 }
 
+	 //
+	 // Streams a JSONObject node-by-node instead of building a full toString(4)
+	 // String first (that alone was enough to OOM Medula's small heap once the
+	 // denome passed a few MB -- see addPathologyDene, conversation 2026-07-16),
+	 // and lands it atomically via the same temp-file-then-rename pattern as
+	 // copyFileAtomically above.
+	 //
+	 private void writeDenomeJsonAtomically(JSONObject json, File targetFile) throws IOException {
+		 File tempFile = new File(targetFile.getParentFile(), targetFile.getName() + ".tmp");
+		 try (BufferedWriter bw = new BufferedWriter(new FileWriter(tempFile))) {
+			 json.write(bw);
+		 }
+		 Files.move(tempFile.toPath(), targetFile.toPath(),
+				 StandardCopyOption.REPLACE_EXISTING,
+				 StandardCopyOption.ATOMIC_MOVE);
+	 }
+
 	 private long getProcessResidentMemoryKb(int pid) throws InterruptedException {
 		 try {
 			 ArrayList results = Utils.executeCommand("ps -p " + pid + " -o rss=");
@@ -1378,8 +1397,21 @@ public class Medula {
 
 
 			try {
-				FileUtils.write(new File(Utils.getLocalDirectory() + "Teleonome.denome"), denomeJSONObject.toString(4));
-				FileUtils.write(new File(Utils.getLocalDirectory() + "tomcat/webapps/ROOT/Teleonome.denome"), denomeJSONObject.toString(4));
+				//
+				// denomeJSONObject.toString(4) materializes the ENTIRE denome as one
+				// pretty-printed String (called twice, back to back, one per target
+				// file) -- with Medula's small -Xmx64m heap and the denome having grown
+				// past 4MB, this alone was enough to OOM Medula on every single cron
+				// cycle that needed to record a pathology (see conversation
+				// 2026-07-16: Medula crashed every 5 minutes from here, never reaching
+				// the kill/restart calls that follow, leaving Heart and Hypothalamus
+				// both stuck down with nothing left to bring them back). Stream
+				// node-by-node via JSONObject.write() instead, same pattern already
+				// used in DenomeManager/MnemosyneManager, and land each file atomically
+				// via a temp-file rename so a reader never sees a partial write either.
+				//
+				writeDenomeJsonAtomically(denomeJSONObject, new File(Utils.getLocalDirectory() + "Teleonome.denome"));
+				writeDenomeJsonAtomically(denomeJSONObject, new File(Utils.getLocalDirectory() + "tomcat/webapps/ROOT/Teleonome.denome"));
 
 			} catch (IOException | JSONException e) {
 				// TODO Auto-generated catch block
