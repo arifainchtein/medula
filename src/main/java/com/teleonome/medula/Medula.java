@@ -13,6 +13,8 @@ import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
 import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.sql.Timestamp;
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
@@ -110,13 +112,13 @@ public class Medula {
 				File previousTeleonomeFile = new File(Utils.getLocalDirectory() + "Teleonome.previous_pulse");
 				if(previousTeleonomeFile.isFile() && previousTeleonomeFile.length()>0) {
 					logger.info("Teleonome.denome was not found, copying from previous_pulse" );
-					FileUtils.copyFile(previousTeleonomeFile, new File(Utils.getLocalDirectory() + "Teleonome.denome"));
+					copyFileAtomically(previousTeleonomeFile, new File(Utils.getLocalDirectory() + "Teleonome.denome"));
 					addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_MISSING_DENOME_FILE,"");
 					denomeFile = new File(Utils.getLocalDirectory() + "Teleonome.denome");
 				}else {
 					File originalTeleonome = new File(Utils.getLocalDirectory() + "Teleonome.original");
 					logger.info("Teleonome.denome was not found, copying from previous_pulse" );
-					FileUtils.copyFile(originalTeleonome, new File(Utils.getLocalDirectory() + "Teleonome.denome"));
+					copyFileAtomically(originalTeleonome, new File(Utils.getLocalDirectory() + "Teleonome.denome"));
 					addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_MISSING_DENOME_FILE,"");
 					denomeFile = new File(Utils.getLocalDirectory() + "Teleonome.denome");
 				}
@@ -138,7 +140,7 @@ public class Medula {
 				if(!validJSONFormat) {
 					File originalTeleonomeFile = new File(Utils.getLocalDirectory() + "Teleonome.original");
 					logger.info("Teleonome.previous was not bad, copying from original" );
-					FileUtils.copyFile(originalTeleonomeFile, new File(Utils.getLocalDirectory() + "Teleonome.denome"));
+					copyFileAtomically(originalTeleonomeFile, new File(Utils.getLocalDirectory() + "Teleonome.denome"));
 				}
 			}
 			
@@ -442,8 +444,35 @@ public class Medula {
 			//
 			// hypothalamus
 			//
-			
-			denomeFileInString = FileUtils.readFileToString(denomeFile, Charset.defaultCharset());
+
+			//
+			// Hypothalamus rewrites Teleonome.denome by deleting it and writing a fresh
+			// copy rather than write-then-rename, so there's a real (if short) window on
+			// every pulse where the file plain doesn't exist. The isFile()/length()==0
+			// check above only catches that at the very start of monitor() -- by the time
+			// execution reaches here (after the heart and cerebellum checks), Hypothalamus
+			// could easily have deleted-and-not-yet-recreated it, throwing
+			// NoSuchFileException (seen on Ra 2026-07-16 04:10-04:30). That used to fall
+			// through to the outer IOException catch with teleonomeName left at its "",
+			// which went on to break the Tomcat health check below (see the guard there).
+			// Retry through the window instead of giving up on the first read.
+			//
+			int denomeReadAttempts=0;
+			while(true) {
+				try {
+					denomeFileInString = FileUtils.readFileToString(denomeFile, Charset.defaultCharset());
+					break;
+				} catch(IOException e) {
+					denomeReadAttempts++;
+					if(denomeReadAttempts>=5) throw e;
+					logger.warn("Teleonome.denome not readable (attempt " + denomeReadAttempts + "), likely mid-rewrite by Hypothalamus, retrying: " + Utils.getStringException(e));
+					try {
+						Thread.sleep(1000);
+					} catch(InterruptedException ie) {
+						logger.debug("denome read retry sleep interrupted");
+					}
+				}
+			}
 			 validJSONFormat=true;
 			logger.info("checking the Teleonome.denome first, length=" + denomeFileInString.length() );
 			boolean restartHypothalamus=false;
@@ -531,8 +560,7 @@ public class Medula {
 				if(previousPulseDenomeFileInString.length()>0){
 					try{
 						JSONObject previousDenomeJSONObject = new JSONObject(previousPulseDenomeFileInString);
-						FileUtils.deleteQuietly(new File(Utils.getLocalDirectory() + "Teleonome.denome"));
-						FileUtils.copyFile(previousPulseFile, new File(Utils.getLocalDirectory() + "Teleonome.denome"));
+						copyFileAtomically(previousPulseFile, new File(Utils.getLocalDirectory() + "Teleonome.denome"));
 						logger.info("Teleonome.previous_pulse denome is valid json, copying to Teleonome.denome "  );
 						validJSONFormat=true;
 						restartHypothalamus=true;
@@ -554,8 +582,7 @@ public class Medula {
 					logger.info("Copying Teleonome.original to Teleonome.denome" );
 					String originalDenomeFileInString = FileUtils.readFileToString(originalPulseFile, Charset.defaultCharset());
 					JSONObject previousDenomeJSONObject = new JSONObject(originalDenomeFileInString);
-					FileUtils.deleteQuietly(new File(Utils.getLocalDirectory() + "Teleonome.denome"));
-					FileUtils.copyFile(originalPulseFile, new File(Utils.getLocalDirectory() + "Teleonome.denome"));
+					copyFileAtomically(originalPulseFile, new File(Utils.getLocalDirectory() + "Teleonome.denome"));
 
 					logger.info("Teleonome.previous_pulse denome is not valid json, copying Teleonome.original to Teleonome.denome "  );
 					validJSONFormat=true;
@@ -583,7 +610,7 @@ public class Medula {
 					boolean tookSnapshot=false;
 					if(memoryCeilingRestart) {
 						try {
-							FileUtils.copyFile(liveDenomeFile, preKillSnapshotFile);
+							copyFileAtomically(liveDenomeFile, preKillSnapshotFile);
 							tookSnapshot=true;
 						} catch(IOException e) {
 							logger.warn("could not snapshot Teleonome.denome before memory-ceiling kill: " + Utils.getStringException(e));
@@ -607,8 +634,7 @@ public class Medula {
 								// in flight at kill time), while Teleonome.original is a blank
 								// template that would wipe all of that history out.
 								logger.warn("Teleonome.denome changed while killing Hypothalamus for the memory ceiling (preKillLength=" + preKillLength + " postKillLength=" + postKillLength + "), likely a kill mid-write -- restoring the pre-kill snapshot before restart");
-								FileUtils.deleteQuietly(liveDenomeFile);
-								FileUtils.copyFile(preKillSnapshotFile, liveDenomeFile);
+								copyFileAtomically(preKillSnapshotFile, liveDenomeFile);
 								addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_CORRUPT_PULSE_FILE,
 										"Restored Teleonome.denome from pre-kill snapshot after memory-ceiling kill mid-write, preKillLength=" + preKillLength + " postKillLength=" + postKillLength);
 							}
@@ -660,13 +686,27 @@ public class Medula {
 		//
 		// check the site
 		 boolean webappok=false;
+		 if(teleonomeName==null || teleonomeName.trim().isEmpty()) {
+			 //
+			 // teleonomeName only ends up empty here if this cycle's Teleonome.denome
+			 // read/parse never got as far as the "Name" field (see the retry loop
+			 // above) -- in that case "http://"+teleonomeName+".local" collapses to
+			 // "http://.local", which can never resolve. That used to read as the
+			 // webapp being down and kill a Tomcat that was actually healthy, then
+			 // fail to verify the restart for the same reason and give up (observed
+			 // on Ra 2026-07-16 04:10-04:30, needing a manual restart). Skip the check
+			 // entirely rather than act on a hostname we know is bogus.
+			 //
+			 logger.warn("teleonomeName is empty this cycle, skipping Tomcat health check rather than risk killing a healthy webapp over a malformed hostname");
+			 webappok=true;
+		 } else {
          try {
-        	 String website = "http://"+teleonomeName+".local"; 
+        	 String website = "http://"+teleonomeName+".local";
         	 logger.warn("Connecting to  " + website);
     		 URL url = new URL(website);
              HttpURLConnection connection = (HttpURLConnection) url.openConnection();
 			connection.setRequestMethod("GET");
-			  connection.setConnectTimeout(5000); // Set timeout to 5 seconds  
+			  connection.setConnectTimeout(5000); // Set timeout to 5 seconds
 		         connection.connect();
 		         int responseCode = connection.getResponseCode();
 		         logger.warn("responseCode=  " + responseCode);
@@ -678,6 +718,7 @@ public class Medula {
 			// TODO Auto-generated catch block
 			logger.warn(Utils.getStringException(e));
 		}
+		 }
        int webAppPid=-1;
         if(!webappok) {
         	File webAppProcessInfo=new File("/home/pi/Teleonome/WebServerProcess.info");
@@ -924,6 +965,23 @@ public class Medula {
 	 // so a single trimmed numeric line back). Returns -1 if the process isn't running
 	 // or the output can't be parsed, which the caller treats as "can't tell, don't act".
 	 //
+	 //
+	 // FileUtils.copyFile() writes straight into the destination (truncate then
+	 // stream), so anything reading Teleonome.denome while one of these recovery
+	 // copies is in flight can see it empty or partial -- the same class of race
+	 // that caused the Tomcat health check to misfire on Ra (2026-07-16). Copy to
+	 // a sibling .tmp file in the same directory, then swap it into place with an
+	 // atomic rename so readers only ever see the old complete file or the new
+	 // complete file.
+	 //
+	 private void copyFileAtomically(File source, File dest) throws IOException {
+		 File tempFile = new File(dest.getParentFile(), dest.getName() + ".tmp");
+		 FileUtils.copyFile(source, tempFile);
+		 Files.move(tempFile.toPath(), dest.toPath(),
+				 StandardCopyOption.REPLACE_EXISTING,
+				 StandardCopyOption.ATOMIC_MOVE);
+	 }
+
 	 private long getProcessResidentMemoryKb(int pid) throws InterruptedException {
 		 try {
 			 ArrayList results = Utils.executeCommand("ps -p " + pid + " -o rss=");
