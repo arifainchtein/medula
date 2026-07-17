@@ -195,10 +195,11 @@ public class Medula {
 
 
 			try {
+				boolean denomePulseLate;
 				if(heartDenomeJSONObject!=null) {
-					late= isPulseLate( heartDenomeJSONObject);
+					denomePulseLate= isPulseLate( heartDenomeJSONObject);
 				}else {
-					late=true;
+					denomePulseLate=true;
 				}
 				//
 				// isPulseLate alone can stay false even when the heart is half-dead:
@@ -212,6 +213,23 @@ public class Medula {
 				// loop's actual thread-liveness, so check that too.
 				//
 				boolean sessionLoopDead = false;
+				//
+				// HeartTeleonome.denome is only ever rewritten by PublisherListener
+				// when Hypothalamus successfully publishes a Status message to Heart --
+				// so a late denome pulse alone does not prove Heart is broken, only
+				// that nothing has arrived from Hypothalamus lately. HeartPing.info,
+				// in contrast, is written every ~60s by Heart's own PingThread
+				// regardless of whether anything is being published to it -- a
+				// fresh ping there proves Heart itself is alive and responsive even
+				// if the denome pulse looks stale. Observed in production
+				// 2026-07-17: Hypothalamus's MQTT client to Heart got permanently
+				// stuck disconnected (a Hypothalamus-side bug), Heart's denome
+				// pulse froze, and Medula killed a perfectly healthy Heart process
+				// on a ~10-15 minute loop for hours because it had no way to tell
+				// the two situations apart.
+				//
+				boolean heartPingFresh = false;
+				long heartPingAgeSeconds = -1;
 				try {
 					String heartPingInfoString = FileUtils.readFileToString(new File(Utils.getLocalDirectory() + "heart/HeartPing.info"));
 					JSONObject heartPingInfo = new JSONObject(heartPingInfoString);
@@ -221,15 +239,25 @@ public class Medula {
 						logger.warn("heart has " + deadSessionEventLoopCount + " dead session event loop(s) out of " + heartPingInfo.optInt("sessionEventLoopCount", -1) + " -- clients pinned to those shards are permanently unresponsive");
 						addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_HEART_SESSION_LOOP_DEAD, "deadSessionEventLoopCount=" + deadSessionEventLoopCount);
 					}
+					long heartPingTimestampMillis = heartPingInfo.optLong(TeleonomeConstants.DATATYPE_TIMESTAMP_MILLISECONDS, -1);
+					if(heartPingTimestampMillis > 0) {
+						heartPingAgeSeconds = (System.currentTimeMillis() - heartPingTimestampMillis)/1000;
+						// PingThread writes every 60s; allow a few missed cycles before treating it as stale
+						heartPingFresh = heartPingAgeSeconds < 180;
+					}
 				} catch (Exception e) {
 					logger.warn(Utils.getStringException(e));
 				}
-				late = late || sessionLoopDead;
+				boolean hypothalamusNotPublishingToHeart = denomePulseLate && !sessionLoopDead && heartPingFresh;
+				late = denomePulseLate || sessionLoopDead;
 				heartPulseLate = late;
-				if(late ){
+				if(hypothalamusNotPublishingToHeart) {
+					logger.warn("Heart's own ping is fresh (age=" + heartPingAgeSeconds + "s) but its pulse denome is late -- Heart is alive, Hypothalamus is not publishing to it. Not restarting Heart; this is a Hypothalamus problem.");
+					addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_HYPOTHALAMUS_NOT_PUBLISHING_TO_HEART, "heartPingAgeSeconds=" + heartPingAgeSeconds);
+				} else if(late ){
 					logger.info("the heart  is late, seconds since currentPulseFrequency=" + currentPulseFrequency + " numberOfPulsesBeforeIsLate=" + numberOfPulsesBeforeIsLate + " last pulse=" + timeSinceLastPulse/1000 + " maximum number of seconds =" + (numberOfPulsesBeforeIsLate*(currentPulseFrequency + currentPulseGenerationDuration))/1000);
 					//
-					// if we are late, check to see if the pacemaker is running, 
+					// if we are late, check to see if the pacemaker is running,
 					// get the processid
 
 					ArrayList results = Utils.executeCommand("ps -p " + heartPid);
