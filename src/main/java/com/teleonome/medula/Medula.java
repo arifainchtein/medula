@@ -345,6 +345,15 @@ public class Medula {
 			//
 			// check the hippocampus
 			//
+			// Some Teleonomes (e.g. Ra) intentionally never install Hippocampus.jar to
+			// keep their memory/power footprint minimal -- they only need to publish
+			// data reliably, other Teleonomes do the analysis. Absence of the jar itself
+			// means "not installed here on purpose", not "crashed and needs restarting".
+			//
+			File hippocampusJar = new File("/home/pi/Teleonome/Hippocampus.jar");
+			if (!hippocampusJar.isFile()) {
+				logger.debug("Hippocampus.jar not present on this host, skipping hippocampus check (intentionally not installed)");
+			} else {
 			File hippocampusStatusFile = new File("/home/pi/Teleonome/HippocampusStatus.json");
 			int hippocampusPid = -1;
 			boolean hippocampusNeedsRestart = false;
@@ -413,11 +422,20 @@ public class Medula {
 			} catch (Exception e) {
 				logger.warn("Exception verifying hippocampus: " + Utils.getStringException(e));
 			}
+			}
 
 
 			//
 			// check the cerebellum
 			//
+			// Same reasoning as hippocampus above -- a Teleonome that never installed
+			// Cerebellum.jar doesn't need it, and shouldn't get a restart-loop or
+			// pathology entries for something that was never meant to run there.
+			//
+			File cerebellumJar = new File("/home/pi/Teleonome/Cerebellum.jar");
+			if (!cerebellumJar.isFile()) {
+				logger.debug("Cerebellum.jar not present on this host, skipping cerebellum check (intentionally not installed)");
+			} else {
 			File cerebellumStatusFile = new File("/home/pi/Teleonome/CerebellumStatus.json");
 			int cerebellumPid = -1;
 			boolean cerebellumNeedsRestart = false;
@@ -468,6 +486,7 @@ public class Medula {
 
 			} catch (Exception e) {
 				logger.warn("Exception verifying cerebellum: " + Utils.getStringException(e));
+			}
 			}
 
 
