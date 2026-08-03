@@ -140,9 +140,15 @@ public class Medula {
 				logger.warn(Utils.getStringException(e));
 			}finally{
 				if(!validJSONFormat) {
-					File originalTeleonomeFile = new File(Utils.getLocalDirectory() + "Teleonome.original");
-					logger.info("Teleonome.previous was not bad, copying from original" );
-					copyFileAtomically(originalTeleonomeFile, new File(Utils.getLocalDirectory() + "Teleonome.denome"));
+					File previousTeleonomeFile = new File(Utils.getLocalDirectory() + "Teleonome.previous_pulse");
+					if(previousTeleonomeFile.isFile() && previousTeleonomeFile.length()>0) {
+						logger.info("Teleonome.denome was not valid JSON, copying from previous_pulse" );
+						copyFileAtomically(previousTeleonomeFile, new File(Utils.getLocalDirectory() + "Teleonome.denome"));
+					}else {
+						File originalTeleonomeFile = new File(Utils.getLocalDirectory() + "Teleonome.original");
+						logger.info("Teleonome.denome was not valid JSON and previous_pulse was not usable, copying from original" );
+						copyFileAtomically(originalTeleonomeFile, new File(Utils.getLocalDirectory() + "Teleonome.denome"));
+					}
 				}
 			}
 			
