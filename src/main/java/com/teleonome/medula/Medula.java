@@ -1030,11 +1030,22 @@ public class Medula {
 	 // complete file.
 	 //
 	 private void copyFileAtomically(File source, File dest) throws IOException {
-		 File tempFile = new File(dest.getParentFile(), dest.getName() + ".tmp");
-		 FileUtils.copyFile(source, tempFile);
-		 Files.move(tempFile.toPath(), dest.toPath(),
-				 StandardCopyOption.REPLACE_EXISTING,
-				 StandardCopyOption.ATOMIC_MOVE);
+		 // Unique per call -- a fixed "<name>.tmp" path let two overlapping writers
+		 // (e.g. this recovery copy racing a routine Hypothalamus pulse write, or two
+		 // overlapping Medula runs) truncate and stream into the SAME temp file at
+		 // once, so whichever one's Files.move() landed last atomically swapped in an
+		 // interleaved mix of both writers' content instead of either one's real
+		 // output -- see the framework-side DenomeManager.saveAtomically() fix,
+		 // 2026-08-04 ChinampaMonitor denome corruption incident.
+		 File tempFile = File.createTempFile(dest.getName(), ".tmp", dest.getParentFile());
+		 try {
+			 FileUtils.copyFile(source, tempFile);
+			 Files.move(tempFile.toPath(), dest.toPath(),
+					 StandardCopyOption.REPLACE_EXISTING,
+					 StandardCopyOption.ATOMIC_MOVE);
+		 } finally {
+			 FileUtils.deleteQuietly(tempFile);
+		 }
 	 }
 
 	 //
@@ -1045,13 +1056,17 @@ public class Medula {
 	 // copyFileAtomically above.
 	 //
 	 private void writeDenomeJsonAtomically(JSONObject json, File targetFile) throws IOException {
-		 File tempFile = new File(targetFile.getParentFile(), targetFile.getName() + ".tmp");
-		 try (BufferedWriter bw = new BufferedWriter(new FileWriter(tempFile))) {
-			 json.write(bw);
+		 File tempFile = File.createTempFile(targetFile.getName(), ".tmp", targetFile.getParentFile());
+		 try {
+			 try (BufferedWriter bw = new BufferedWriter(new FileWriter(tempFile))) {
+				 json.write(bw);
+			 }
+			 Files.move(tempFile.toPath(), targetFile.toPath(),
+					 StandardCopyOption.REPLACE_EXISTING,
+					 StandardCopyOption.ATOMIC_MOVE);
+		 } finally {
+			 FileUtils.deleteQuietly(tempFile);
 		 }
-		 Files.move(tempFile.toPath(), targetFile.toPath(),
-				 StandardCopyOption.REPLACE_EXISTING,
-				 StandardCopyOption.ATOMIC_MOVE);
 	 }
 
 	 private long getProcessResidentMemoryKb(int pid) throws InterruptedException {
