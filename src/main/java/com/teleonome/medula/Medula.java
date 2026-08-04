@@ -254,8 +254,66 @@ public class Medula {
 				} catch (Exception e) {
 					logger.warn(Utils.getStringException(e));
 				}
-				boolean hypothalamusNotPublishingToHeart = denomePulseLate && !sessionLoopDead && heartPingFresh;
-				late = denomePulseLate || sessionLoopDead;
+				//
+				// Separate signal from Hypothalamus's own side, added 2026-08-04,
+				// reworked 2026-08-05. Used to detect Hypothalamus's fixed Heart-publish
+				// worker pool getting permanently exhausted (a Paho thread-leak bug).
+				// That leak is now fixed at the root -- Hypothalamus.java's
+				// publishToHeart() no longer blocks a thread on Paho at all, so there
+				// is no pool left to exhaust -- but Heart publishing can still fail for
+				// other reasons (Heart genuinely unreachable, etc), so Hypothalamus now
+				// reports a simpler signal instead: consecutive publish failures.
+				//
+				boolean heartPublishRepeatedlyFailing = false;
+				try {
+					String hypothalamusPingInfoString = FileUtils.readFileToString(new File(Utils.getLocalDirectory() + "HypothalamusPing.info"));
+					JSONObject hypothalamusPingInfo = new JSONObject(hypothalamusPingInfoString);
+					int heartPublishConsecutiveFailures = hypothalamusPingInfo.optInt("heartPublishConsecutiveFailures", 0);
+					long hypothalamusPingTimestampMillis = hypothalamusPingInfo.optLong(TeleonomeConstants.DATATYPE_TIMESTAMP_MILLISECONDS, -1);
+					// Only act on this if the file itself is fresh -- a stale file (e.g.
+					// Hypothalamus down entirely) would report a meaningless snapshot,
+					// already covered by the ordinary late-pulse restart path instead.
+					boolean hypothalamusPingFresh = hypothalamusPingTimestampMillis > 0
+							&& (System.currentTimeMillis() - hypothalamusPingTimestampMillis) < 180000;
+					if(hypothalamusPingFresh && heartPublishConsecutiveFailures >= 5) {
+						heartPublishRepeatedlyFailing = true;
+						logger.warn("Hypothalamus has had " + heartPublishConsecutiveFailures
+								+ " consecutive failures publishing to Heart -- restarting Heart");
+						addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_HEART_PUBLISH_POOL_EXHAUSTED,
+								"heartPublishConsecutiveFailures=" + heartPublishConsecutiveFailures);
+					}
+				} catch (Exception e) {
+					logger.warn(Utils.getStringException(e));
+				}
+				//
+				// Heart's own self-reported Metaspace/GC pressure (Heart.java's PingThread,
+				// added 2026-08-05) -- the leading indicator behind the publish-freeze
+				// incidents above, now visible directly instead of only inferred after it
+				// cascades into sessionLoopDead or heartPublishRepeatedlyFailing. Logged for
+				// visibility/trend-tracking only for now: Metaspace has been observed
+				// reaching this range within hours of a fresh restart and holding there
+				// without an immediate failure, so this deliberately does not feed into
+				// "late" / trigger a restart yet -- no validated safe threshold for that.
+				//
+				try {
+					String heartPingInfoString = FileUtils.readFileToString(new File(Utils.getLocalDirectory() + "heart/HeartPing.info"));
+					JSONObject heartPingInfo = new JSONObject(heartPingInfoString);
+					double metaspacePercentUsed = heartPingInfo.optDouble(TeleonomeConstants.HEART_METASPACE_PERCENT_USED, -1);
+					long fullGcCount = heartPingInfo.optLong(TeleonomeConstants.HEART_FULL_GC_COUNT, -1);
+					long heartPingTimestampMillis = heartPingInfo.optLong(TeleonomeConstants.DATATYPE_TIMESTAMP_MILLISECONDS, -1);
+					boolean heartPingFreshForMetaspace = heartPingTimestampMillis > 0
+							&& (System.currentTimeMillis() - heartPingTimestampMillis) < 180000;
+					if(heartPingFreshForMetaspace && metaspacePercentUsed >= 90) {
+						logger.warn("heart Metaspace pressure: " + String.format("%.1f", metaspacePercentUsed)
+								+ "% used, fullGcCount=" + fullGcCount + " -- logged for trend-tracking, not yet an automatic restart trigger");
+						addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_HEART_METASPACE_PRESSURE,
+								"metaspacePercentUsed=" + metaspacePercentUsed + " fullGcCount=" + fullGcCount);
+					}
+				} catch (Exception e) {
+					logger.warn(Utils.getStringException(e));
+				}
+				boolean hypothalamusNotPublishingToHeart = denomePulseLate && !sessionLoopDead && !heartPublishRepeatedlyFailing && heartPingFresh;
+				late = denomePulseLate || sessionLoopDead || heartPublishRepeatedlyFailing;
 				heartPulseLate = late;
 				if(hypothalamusNotPublishingToHeart) {
 					logger.warn("Heart's own ping is fresh (age=" + heartPingAgeSeconds + "s) but its pulse denome is late -- Heart is alive, Hypothalamus is not publishing to it. Not restarting Heart; this is a Hypothalamus problem.");
