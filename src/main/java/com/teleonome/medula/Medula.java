@@ -11,6 +11,7 @@ import java.io.RandomAccessFile;
 import java.net.HttpURLConnection;
 import java.net.ProtocolException;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
@@ -799,6 +800,13 @@ public class Medula {
 		//
 		// check the site
 		 boolean webappok=false;
+		 //
+		 // which pathology to record if webappok ends up false below -- defaults to
+		 // the plain "didn't respond at all" case, switched to
+		 // PATHOLOGY_TOMCAT_SERVLET_ERROR if the root page was fine but the
+		 // TeleonomeServlet functional check (added below) is what actually failed.
+		 //
+		 String tomcatFailurePathology = TeleonomeConstants.PATHOLOGY_TOMCAT_PING_LATE;
 		 if(teleonomeName==null || teleonomeName.trim().isEmpty()) {
 			 //
 			 // teleonomeName only ends up empty here if this cycle's Teleonome.denome
@@ -831,6 +839,45 @@ public class Medula {
 			// TODO Auto-generated catch block
 			logger.warn(Utils.getStringException(e));
 		}
+		 //
+		 // the root page returning 200 only proves Tomcat itself is up -- it does not
+		 // prove TeleonomeServlet actually works. Seen in practice on Tlaloc
+		 // 2026-08-14: WebAppContextListener.contextInitialized() raced a Hypothalamus
+		 // denome write on startup, bailed out of its init try-block early, and left
+		 // the "TeleonomeName" servlet context attribute permanently null -- every
+		 // GetDeneWordValueByIdentity call NPE'd into an HTTP 500 while the root page
+		 // kept responding 200 the whole time, so this exact check above never caught
+		 // it. Exercise the servlet for real with a DeneWord every host has.
+		 //
+		 if(webappok) {
+			 try {
+				 String identity = teleonomeName + ":Purpose:Operational Data:Vital:Status";
+				 String servletUrl = "http://"+teleonomeName+".local/TeleonomeServlet?formName=GetDeneWordValueByIdentity&identity="
+						 + URLEncoder.encode(identity, "UTF-8");
+				 logger.warn("Connecting to  " + servletUrl);
+				 URL url = new URL(servletUrl);
+				 HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+				 connection.setRequestMethod("GET");
+				 connection.setConnectTimeout(5000);
+				 connection.connect();
+				 int servletResponseCode = connection.getResponseCode();
+				 logger.warn("TeleonomeServlet responseCode=  " + servletResponseCode);
+				 if(servletResponseCode != 200) {
+					 webappok=false;
+					 tomcatFailurePathology = TeleonomeConstants.PATHOLOGY_TOMCAT_SERVLET_ERROR;
+				 }
+			 } catch (IOException e) {
+				 //
+				 // an exception here (as opposed to a clean non-200) means the servlet
+				 // check itself couldn't complete -- treat that as inconclusive rather
+				 // than healthy, same as if we'd never asked, so a genuinely broken
+				 // servlet layer can't hide behind a network hiccup on this one probe.
+				 //
+				 logger.warn(Utils.getStringException(e));
+				 webappok=false;
+				 tomcatFailurePathology = TeleonomeConstants.PATHOLOGY_TOMCAT_SERVLET_ERROR;
+			 }
+		 }
 		 }
        int webAppPid=-1;
         if(!webappok) {
@@ -855,7 +902,7 @@ public class Medula {
     				 lastTomcatPingMillis = webserverPingInfo.getLong(TeleonomeConstants.DATATYPE_TIMESTAMP_MILLISECONDS);
     				long now = System.currentTimeMillis();
     			}
-            	addPathologyDene(faultDate, TeleonomeConstants.PATHOLOGY_TOMCAT_PING_LATE,"Last Tomcat Ping at at " + simpleFormatter.format(new Timestamp(lastTomcatPingMillis)));
+            	addPathologyDene(faultDate, tomcatFailurePathology,"Last Tomcat Ping at at " + simpleFormatter.format(new Timestamp(lastTomcatPingMillis)));
             	if(webAppPid>0) {
             		logger.warn( "webapp  is not running about to kill process " + webAppPid);
             		Utils.executeCommand("sudo kill -9  " + webAppPid);
