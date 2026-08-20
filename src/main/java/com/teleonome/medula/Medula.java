@@ -1768,9 +1768,15 @@ public class Medula {
 		// immediately instead of piling up. The OS releases the lock automatically
 		// even if this process is killed, so there's no stale-lock cleanup needed.
 		//
+		// log4j is configured here (rather than only in the Medula constructor) so this
+		// routine already-running message -- which fires on nearly every cron tick --
+		// goes through the rotating MD appender instead of the cron-captured raw stdout.
+		PropertyConfigurator.configure(Utils.getLocalDirectory() + "lib/Log4J.properties");
+		Logger mainLogger = Logger.getLogger(Medula.class);
+
 		FileLock lock = acquireSingleInstanceLock();
 		if(lock == null) {
-			System.out.println("Another Medula instance is already running, exiting");
+			mainLogger.info("Another Medula instance is already running, exiting");
 			return;
 		}
 		try {
