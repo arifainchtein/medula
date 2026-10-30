@@ -368,7 +368,7 @@ public class Medula {
 						logger.debug("line 277 sleep interrupted");
 					}
 					logger.info(" about to restart the heart"  );
-					results = Utils.executeCommand("sudo sh /home/pi/Teleonome/heart/StartHeartBG.sh");
+					results = Utils.executeCommand("sudo sh /home/pi/Teleonome/heart/StartHeartBG.sh > /dev/null 2>&1");
 					data = "restarted the heart command response="  +String.join(", ", results);
 					int counter=0;
 					logger.info("line 306 After restarting the heart, data=" + data)  ;
@@ -480,7 +480,11 @@ public class Medula {
 						logger.debug("hippocampus restart sleep interrupted");
 					}
 					logger.info("about to restart the hippocampus");
-					ArrayList results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartHippocampusBG.sh");
+					// The BG scripts end with "java ... &" and the backgrounded java keeps the
+					// pipe open, so without the redirect executeCommand never sees EOF and Medula
+					// hangs forever (2026-10-18: hung 21 hours, Hypothalamus stayed dead 8 of them).
+					// The same redirect is on every BG launch in this class.
+					ArrayList results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartHippocampusBG.sh > /dev/null 2>&1");
 					logger.info("restarted hippocampus, response=" + String.join(", ", results));
 				}
 
@@ -545,7 +549,7 @@ public class Medula {
 						logger.debug("cerebellum restart sleep interrupted");
 					}
 					logger.info("about to restart the cerebellum");
-					ArrayList results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartCerebellumBG.sh");
+					ArrayList results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartCerebellumBG.sh > /dev/null 2>&1");
 					logger.info("restarted cerebellum, response=" + String.join(", ", results));
 				}
 
@@ -765,7 +769,7 @@ public class Medula {
 					}catch(InterruptedException e) {
 						logger.debug("line 195 sleep interrupted");
 					}
-					ArrayList<String> results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartHypothalamusBG.sh");
+					ArrayList<String> results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartHypothalamusBG.sh > /dev/null 2>&1");
 					String data =  " Restarted Hypothalamus " + new Date() + String.join(", ", results);
 					logger.warn("restarting TeleonomeHypothalamus process command execution result:" + data);
 				} catch (InterruptedException e) {
@@ -822,7 +826,10 @@ public class Medula {
 			 webappok=true;
 		 } else {
          try {
-        	 String website = "http://"+teleonomeName+".local";
+        	 // 2026-10-30: localhost, not <teleonomeName>.local: Medula runs on the same Pi as its Tomcat, and a
+        	 // Teleonome name can be another device's mDNS name (annabelle.local is Annabelle's ESP32; her Pi is
+        	 // annabelle-teleonome.local), which answered this check instead of the Pi.
+        	 String website = "http://localhost";
         	 logger.warn("Connecting to  " + website);
     		 URL url = new URL(website);
              HttpURLConnection connection = (HttpURLConnection) url.openConnection();
@@ -852,7 +859,7 @@ public class Medula {
 		 if(webappok) {
 			 try {
 				 String identity = teleonomeName + ":Purpose:Operational Data:Vital:Status";
-				 String servletUrl = "http://"+teleonomeName+".local/TeleonomeServlet?formName=GetDeneWordValueByIdentity&identity="
+				 String servletUrl = "http://localhost/TeleonomeServlet?formName=GetDeneWordValueByIdentity&identity="
 						 + URLEncoder.encode(identity, "UTF-8");
 				 logger.warn("Connecting to  " + servletUrl);
 				 URL url = new URL(servletUrl);
@@ -928,7 +935,7 @@ public class Medula {
     			}
     			logger.warn( "restarting webapp ");
     			FileUtils.deleteQuietly(webAppProcessInfo);
-    			ArrayList results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartWebserverBG.sh");
+    			ArrayList results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartWebserverBG.sh > /dev/null 2>&1");
     			String data = "restarted the webapp command response="  +String.join(", ", results);
     			logger.warn( data);
 
@@ -948,7 +955,7 @@ public class Medula {
     					logger.warn(Utils.getStringException(e));
     				}
     				try {
-    					URL verifyUrl = new URL("http://"+teleonomeName+".local");
+    					URL verifyUrl = new URL("http://localhost");  // same Pi, see the health check above
     					HttpURLConnection verifyConnection = (HttpURLConnection) verifyUrl.openConnection();
     					verifyConnection.setRequestMethod("GET");
     					verifyConnection.setConnectTimeout(5000);
