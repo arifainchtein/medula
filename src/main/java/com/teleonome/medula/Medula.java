@@ -479,13 +479,29 @@ public class Medula {
 					} catch (InterruptedException e) {
 						logger.debug("hippocampus restart sleep interrupted");
 					}
-					logger.info("about to restart the hippocampus");
-					// The BG scripts end with "java ... &" and the backgrounded java keeps the
-					// pipe open, so without the redirect executeCommand never sees EOF and Medula
-					// hangs forever (2026-10-18: hung 21 hours, Hypothalamus stayed dead 8 of them).
-					// The same redirect is on every BG launch in this class.
-					ArrayList results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartHippocampusBG.sh > /dev/null 2>&1");
-					logger.info("restarted hippocampus, response=" + String.join(", ", results));
+					//
+					// Last-moment duplicate guard, covering every restart path (not just the
+					// "status file missing" one above). 2026-11-09 on annabelle-teleonome: a manual
+					// restart started a new Hippocampus, but HippocampusStatus.json still held the
+					// old (now dead) pid until the new one finished preloading - so the
+					// "pid not running" branch started a second one 7s later. Two instances share
+					// MQTT client id "Hippocampus_Organ" and kick each other off Heart in an
+					// endless reconnect loop. If any Hippocampus.jar is running here, leave it:
+					// it rewrites HippocampusStatus.json with its own pid once preload is done.
+					// (After the stale-status kill -9 above, nothing should match.)
+					//
+					ArrayList stillRunningHippocampus = Utils.executeCommand("pgrep -f [H]ippocampus.jar");
+					if (stillRunningHippocampus.size() >= 1) {
+						logger.warn("hippocampus restart skipped - a Hippocampus.jar process is already running: " + stillRunningHippocampus);
+					} else {
+						logger.info("about to restart the hippocampus");
+						// The BG scripts end with "java ... &" and the backgrounded java keeps the
+						// pipe open, so without the redirect executeCommand never sees EOF and Medula
+						// hangs forever (2026-10-18: hung 21 hours, Hypothalamus stayed dead 8 of them).
+						// The same redirect is on every BG launch in this class.
+						ArrayList results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartHippocampusBG.sh > /dev/null 2>&1");
+						logger.info("restarted hippocampus, response=" + String.join(", ", results));
+					}
 				}
 
 			} catch (Exception e) {
