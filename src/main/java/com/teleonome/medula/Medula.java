@@ -109,9 +109,15 @@ public class Medula {
 				// TODO Auto-generated catch block
 				logger.warn(Utils.getStringException(e));
 			}
-			
+			//
+			// stopped by a person (2026-11-19): the Diagnostics "Stop Hypothalamus" button, so the Denome can be fertilized.
+			// While HypothalamusStopped.info says so, the Medula leaves the Hypothalamus and Teleonome.denome alone: no
+			// restart, no repair from previous_pulse, no pathology written into the Denome. The other organs are still watched.
+			boolean stoppedByPerson = personStopActive();
+			if(stoppedByPerson) logger.warn("The Hypothalamus was stopped by a person (" + PERSON_STOP_FILE + "): not restarting it, not touching Teleonome.denome");
+
 			File denomeFile = new File(Utils.getLocalDirectory() + "Teleonome.denome");
-			if(!denomeFile.isFile() || denomeFile.length()==0) {
+			if((!denomeFile.isFile() || denomeFile.length()==0) && !stoppedByPerson) {
 				File previousTeleonomeFile = new File(Utils.getLocalDirectory() + "Teleonome.previous_pulse");
 				if(previousTeleonomeFile.isFile() && previousTeleonomeFile.length()>0) {
 					logger.info("Teleonome.denome was not found, copying from previous_pulse" );
@@ -140,7 +146,7 @@ public class Medula {
 			}catch(Exception e) {
 				logger.warn(Utils.getStringException(e));
 			}finally{
-				if(!validJSONFormat) {
+				if(!validJSONFormat && !stoppedByPerson) {
 					File previousTeleonomeFile = new File(Utils.getLocalDirectory() + "Teleonome.previous_pulse");
 					if(previousTeleonomeFile.isFile() && previousTeleonomeFile.length()>0) {
 						logger.info("Teleonome.denome was not valid JSON, copying from previous_pulse" );
@@ -637,7 +643,7 @@ public class Medula {
 				//
 				 late= isPulseLate( denomeJSONObject);
 				String lastPulseDate = denomeJSONObject.getString(TeleonomeConstants.PULSE_TIMESTAMP);
-				if(late){
+				if(late && !stoppedByPerson){
 					logger.info("PULSE LATE, heartPulseLate=" + heartPulseLate + " seconds since currentPulseFrequency=" + currentPulseFrequency + " numberOfPulsesBeforeIsLate=" + numberOfPulsesBeforeIsLate + " last pulse=" + timeSinceLastPulse/1000 + " maximum number of seconds =" + (numberOfPulsesBeforeIsLate*(currentPulseFrequency + currentPulseGenerationDuration))/1000);
 					validJSONFormat=true;
 					restartHypothalamus=true;
@@ -660,7 +666,7 @@ public class Medula {
 					//
 				}
 
-				if(!restartHypothalamus && hypothalamusPid>0) {
+				if(!restartHypothalamus && hypothalamusPid>0 && !stoppedByPerson) {
 					try {
 						long hypothalamusRssKb = getProcessResidentMemoryKb(hypothalamusPid);
 						if(hypothalamusRssKb > HYPOTHALAMUS_MAX_RSS_KB) {
@@ -685,7 +691,7 @@ public class Medula {
 			}
 
 
-			if(!validJSONFormat){
+			if(!validJSONFormat && !stoppedByPerson){
 
 
 				File previousPulseFile = new File(Utils.getLocalDirectory() + "Teleonome.previous_pulse");
@@ -709,7 +715,7 @@ public class Medula {
 				}
 			}
 			//
-			if(!validJSONFormat) {
+			if(!validJSONFormat && !stoppedByPerson) {
 				// if we are here is because the previous pulse was corrupt so copy the original
 				try{
 					File originalPulseFile = new File(Utils.getLocalDirectory() + "Teleonome.original");
@@ -731,6 +737,10 @@ public class Medula {
 				}
 			}
 
+			if(restartHypothalamus && stoppedByPerson) {
+				logger.warn("would restart the Hypothalamus, but it was stopped by a person: leaving it stopped");
+				restartHypothalamus=false;
+			}
 			if(restartHypothalamus) {
 				try {
 					//
@@ -1510,6 +1520,11 @@ public class Medula {
 
 
 	public void addPathologyDene(Date faultTime, String pathologyCause, String data) throws InvalidDenomeException, JSONException{
+		if(personStopActive()) {
+			// the Denome may be being fertilized: never write it now (2026-11-19)
+			logger.warn("pathology not written, the Hypothalamus is stopped by a person: " + pathologyCause + " " + data);
+			return;
+		}
 
 		File selectedFile = new File(Utils.getLocalDirectory() + "Teleonome.denome");
 		String initialIdentityState="";
@@ -1639,6 +1654,28 @@ public class Medula {
 
 	}
 
+
+	public static final String PERSON_STOP_FILE = "HypothalamusStopped.info";
+
+	/**
+	 * Whether a person stopped the Hypothalamus on purpose (2026-11-19): the file HypothalamusStopped.info, written by
+	 * the Hypothalamus itself when "Stop Hypothalamus" came with a good code, with "Until" (milliseconds). Past that
+	 * time the file is deleted and the Medula goes back to normal, so a forgotten stop does not leave the farm without
+	 * a pulse. A file that cannot be read counts as no stop.
+	 */
+	public boolean personStopActive() {
+		File f = new File(Utils.getLocalDirectory() + PERSON_STOP_FILE);
+		if(!f.isFile()) return false;
+		try {
+			JSONObject stop = new JSONObject(FileUtils.readFileToString(f, Charset.defaultCharset()));
+			if(System.currentTimeMillis() < stop.optLong("Until", 0)) return true;
+			logger.warn("the person's stop of the Hypothalamus expired (" + stop.optString("Until Text", "") + "): back to normal");
+		} catch(IOException | JSONException e) {
+			logger.warn("unreadable " + PERSON_STOP_FILE + ", ignoring it: " + e.getMessage());
+		}
+		FileUtils.deleteQuietly(f);
+		return false;
+	}
 
 	public static void startHypothalamus(){
 		String commandToExecute = "sudo sh StartPaceMakerBG.sh";
