@@ -43,6 +43,7 @@ import com.teleonome.framework.TeleonomeConstants;
 import com.teleonome.framework.denome.DenomeUtils;
 import com.teleonome.framework.denome.Identity;
 import com.teleonome.framework.exception.InvalidDenomeException;
+import com.teleonome.framework.utils.OrganStop;
 import com.teleonome.framework.utils.Utils;
 
 import javolution.text.CharSet;
@@ -173,6 +174,12 @@ public class Medula {
 			//
 			// check the heart status
 			//
+			// stopped by a person (2026-11-22): the Diagnostics "Stop Heart" button; while HeartStopped.info says so
+			// the Heart is not checked nor restarted (OrganStop deletes the file once past its Until)
+			boolean heartPulseLate = false;
+			if(OrganStop.isStopped(Utils.getLocalDirectory(), OrganStop.HEART)) {
+				logger.warn("The Heart was stopped by a person (" + OrganStop.stopFileName(OrganStop.HEART) + "): not checking or restarting it");
+			} else {
 			File heartProcessInfo=new File("/home/pi/Teleonome/heart/HeartProcess.info");
 			
 			try {
@@ -199,7 +206,7 @@ public class Medula {
 				logger.warn(Utils.getStringException(e));
 			}
 			boolean late;
-			boolean heartPulseLate = false;
+			heartPulseLate = false;
 			String heartLastPulseDate = "";
 			if(heartDenomeJSONObject!=null) {
 				heartDenomeJSONObject.getString(TeleonomeConstants.PULSE_TIMESTAMP);
@@ -412,6 +419,7 @@ public class Medula {
 				// TODO Auto-generated catch block
 				logger.warn(Utils.getStringException(e));
 			}
+			}	// heart not stopped by a person
 			
 			//
 			// check the hippocampus
@@ -424,6 +432,9 @@ public class Medula {
 			File hippocampusJar = new File("/home/pi/Teleonome/Hippocampus.jar");
 			if (!hippocampusJar.isFile()) {
 				logger.debug("Hippocampus.jar not present on this host, skipping hippocampus check (intentionally not installed)");
+			} else if (OrganStop.isStopped(Utils.getLocalDirectory(), OrganStop.HIPPOCAMPUS)) {
+				// stopped by a person from the Diagnostics page (2026-11-22)
+				logger.warn("The Hippocampus was stopped by a person (" + OrganStop.stopFileName(OrganStop.HIPPOCAMPUS) + "): not checking or restarting it");
 			} else {
 			File hippocampusStatusFile = new File("/home/pi/Teleonome/HippocampusStatus.json");
 			int hippocampusPid = -1;
@@ -526,6 +537,9 @@ public class Medula {
 			File cerebellumJar = new File("/home/pi/Teleonome/Cerebellum.jar");
 			if (!cerebellumJar.isFile()) {
 				logger.debug("Cerebellum.jar not present on this host, skipping cerebellum check (intentionally not installed)");
+			} else if (OrganStop.isStopped(Utils.getLocalDirectory(), OrganStop.CEREBELLUM)) {
+				// stopped by a person from the Diagnostics page (2026-11-22)
+				logger.warn("The Cerebellum was stopped by a person (" + OrganStop.stopFileName(OrganStop.CEREBELLUM) + "): not checking or restarting it");
 			} else {
 			File cerebellumStatusFile = new File("/home/pi/Teleonome/CerebellumStatus.json");
 			int cerebellumPid = -1;
@@ -570,9 +584,15 @@ public class Medula {
 					} catch (InterruptedException e) {
 						logger.debug("cerebellum restart sleep interrupted");
 					}
-					logger.info("about to restart the cerebellum");
-					ArrayList results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartCerebellumBG.sh > /dev/null 2>&1");
-					logger.info("restarted cerebellum, response=" + String.join(", ", results));
+					// same duplicate guard as the hippocampus (2026-11-22): a Start from the Diagnostics page leaves the
+					// old pid in CerebellumStatus.json until the new Cerebellum writes its own
+					if (OrganStop.isRunning(OrganStop.CEREBELLUM)) {
+						logger.warn("cerebellum restart skipped - a Cerebellum.jar process is already running");
+					} else {
+						logger.info("about to restart the cerebellum");
+						ArrayList results = Utils.executeCommand("sudo sh /home/pi/Teleonome/StartCerebellumBG.sh > /dev/null 2>&1");
+						logger.info("restarted cerebellum, response=" + String.join(", ", results));
+					}
 				}
 
 			} catch (Exception e) {
