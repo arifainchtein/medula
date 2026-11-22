@@ -177,6 +177,7 @@ public class Medula {
 			// stopped by a person (2026-11-22): the Diagnostics "Stop Heart" button; while HeartStopped.info says so
 			// the Heart is not checked nor restarted (OrganStop deletes the file once past its Until)
 			boolean heartPulseLate = false;
+			boolean late = false;
 			if(OrganStop.isStopped(Utils.getLocalDirectory(), OrganStop.HEART)) {
 				logger.warn("The Heart was stopped by a person (" + OrganStop.stopFileName(OrganStop.HEART) + "): not checking or restarting it");
 			} else {
@@ -205,7 +206,6 @@ public class Medula {
 			}catch(Exception e) {
 				logger.warn(Utils.getStringException(e));
 			}
-			boolean late;
 			heartPulseLate = false;
 			String heartLastPulseDate = "";
 			if(heartDenomeJSONObject!=null) {
